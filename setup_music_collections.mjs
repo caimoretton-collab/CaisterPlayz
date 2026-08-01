@@ -6,8 +6,8 @@ const rl = createInterface({ input: process.stdin, output: process.stdout });
 const ask = (q) => new Promise(r => rl.question(q, r));
 
 async function main() {
-  const email = await ask('Superuser email: ');
-  const password = await ask('Superuser password: ');
+  const email = 'caismoretton@gmail.com';
+  const password = 'CaisterAdmin2026!';
 
   const pb = new PocketBase(PB_URL);
   pb.autoCancellation(false);
@@ -36,7 +36,7 @@ async function main() {
       ],
       listRule: '',
       viewRule: '',
-      createRule: '@request.auth.id != "" && @request.auth.id = @request.data.userId',
+      createRule: '@request.auth.id != ""',
       updateRule: '@request.auth.id != ""', 
       deleteRule: '@request.auth.id = userId',
     });
@@ -48,20 +48,28 @@ async function main() {
     const existing = await pb.collections.getOne('cplayz_track_likes');
     console.log('✓ cplayz_track_likes already exists (id:', existing.id, ')');
   } catch {
+    let tracksCollection;
+    try {
+      tracksCollection = await pb.collections.getOne('cplayz_tracks');
+    } catch (e) {
+      console.log('Error fetching tracks collection for relation.');
+      process.exit(1);
+    }
+
     console.log('Creating cplayz_track_likes...');
     await pb.collections.create({
       name: 'cplayz_track_likes',
       type: 'base',
       fields: [
         { name: 'userId', type: 'relation', required: true, collectionId: '_pb_users_auth_', cascadeDelete: true, maxSelect: 1 },
-        { name: 'trackId', type: 'relation', required: true, collectionId: 'cplayz_tracks', cascadeDelete: true, maxSelect: 1 },
+        { name: 'trackId', type: 'relation', required: true, collectionId: tracksCollection.id, cascadeDelete: true, maxSelect: 1 },
       ],
       indexes: [
         'CREATE UNIQUE INDEX `idx_track_likes_unique` ON `cplayz_track_likes` (`userId`, `trackId`)'
       ],
       listRule: '',
       viewRule: '',
-      createRule: '@request.auth.id != "" && @request.auth.id = @request.data.userId',
+      createRule: '@request.auth.id != ""',
       updateRule: null,
       deleteRule: '@request.auth.id = userId',
     });
@@ -74,6 +82,6 @@ async function main() {
 
 main().catch(err => {
   console.error('Setup failed:', err.message || err);
-  rl.close();
+  if (err.response) console.error(JSON.stringify(err.response, null, 2));
   process.exit(1);
 });

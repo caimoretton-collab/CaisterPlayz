@@ -38,7 +38,7 @@ export default function UploadView({ currentUserId, onUploadSuccess }) {
       if (onUploadSuccess) onUploadSuccess();
     } catch (err) {
       console.error(err);
-      alert('Failed to upload track.');
+      alert('Failed to upload track: ' + err.message);
     } finally {
       setUploading(false);
     }
