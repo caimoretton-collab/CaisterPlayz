@@ -1,49 +1,33 @@
-import { useState, useRef, useEffect } from 'react';
-import { Camera, Check, X, Loader, CheckCircle, Trash2, ShieldAlert, LogOut, ShieldBan, Flag, AlertTriangle, MoreHorizontal, Shield, ShieldOff } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Camera, Check, X, Loader, LogOut, Trash2, ShieldAlert, Shield, ShieldOff, Flag, MoreHorizontal, Play, CheckCircle } from 'lucide-react';
 import pb from '../pocketbase';
-import { GridCard, timeAgo } from './PostCard';
-import ExpandedBroadcast from './PostCard';
-import { updateProfile, useBlocks, blockUser, unblockUser, toggleFollow, checkIsFollowing, getFollowStats, reportUser } from '../hooks';
-import { formatCount, THEMES, applyTheme, formatNumber } from '../utils';
+import { updateProfile, blockUser, unblockUser, toggleFollow, checkIsFollowing, getFollowStats, reportUser, useBlocks } from '../hooks';
+import { formatNumber } from '../utils';
 
 function compressAv(file) {
   return new Promise((res, rej) => {
     const c = document.createElement('canvas');
     const ctx = c.getContext('2d');
     const img = new window.Image();
-
     img.onload = () => {
       c.width = 200;
       c.height = 200;
       ctx.drawImage(img, 0, 0, 200, 200);
       res(c.toDataURL('image/jpeg', 0.85));
     };
-
     img.onerror = rej;
-
     const r = new FileReader();
-    r.onload = e => {
-      img.src = e.target.result;
-    };
+    r.onload = e => img.src = e.target.result;
     r.onerror = rej;
     r.readAsDataURL(file);
   });
 }
 
-export default function ProfileView({
-  profile,
-  posts,
-  users,
-  currentUserId,
-  onRefresh,
-  onMessageClick
-}) {
-  const [tab, setTab] = useState('broadcasts');
+export default function ProfileView({ profile, currentUserId, onRefresh }) {
   const [editing, setEditing] = useState(false);
   const [eName, setEName] = useState('');
   const [eBio, setEBio] = useState('');
   const [saving, setSaving] = useState(false);
-  const [expanded, setExpanded] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [followStats, setFollowStats] = useState({ followers: 0, following: 0 });
   const [isFollowing, setIsFollowing] = useState(false);
@@ -51,6 +35,10 @@ export default function ProfileView({
   const [showReportModal, setShowReportModal] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [tracks, setTracks] = useState([]);
+  const [loadingTracks, setLoadingTracks] = useState(true);
+
+  const fRef = useRef(null);
 
   useEffect(() => {
     if (profile?.id) {
@@ -58,54 +46,34 @@ export default function ProfileView({
       if (currentUserId && currentUserId !== profile.id) {
         checkIsFollowing(currentUserId, profile.id).then(setIsFollowing);
       }
+      fetchUserTracks();
     }
   }, [profile?.id, currentUserId]);
+
   const { blocks, refresh: refreshBlocks } = useBlocks(currentUserId);
   const isBlocked = blocks.some(b => b.blockedId === profile?.id);
 
-  const fRef = useRef(null);
+  const fetchUserTracks = async () => {
+    try {
+      const res = await pb.collection('cplayz_tracks').getFullList({
+        filter: `userId="${profile.id}"`,
+        sort: '-created'
+      });
+      setTracks(res);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingTracks(false);
+    }
+  };
 
   if (!profile) {
-    return (
-      <div className="empty">
-        <div className="empty-ico">⏳</div>
-        <h3>Loading Stats…</h3>
-      </div>
-    );
+    return <div className="p-8 text-center text-white/50">Loading Artist...</div>;
   }
 
   const isOwn = profile.id === currentUserId;
-
-  const myPosts = posts.filter(p => p.userId === profile.id);
-  const mediaPosts = myPosts.filter(p => p.imageUrl);
-  const boostedPosts = posts.filter(p => (p.likedBy || []).includes(profile.id));
-
-  const tabData =
-    tab === 'broadcasts'
-      ? myPosts
-      : tab === 'visuals'
-        ? mediaPosts
-        : boostedPosts;
-
-  const rc = (arr, authorId) =>
-    (arr || []).filter(id => id !== authorId).length;
-
-  const totalBoosts = myPosts.reduce(
-    (s, p) => s + rc(p.likedBy, p.userId),
-    0
-  );
-
-  const totalDetections = myPosts.reduce(
-    (s, p) => s + rc(p.viewedBy, p.userId),
-    0
-  );
-
-  const totalRelays = myPosts.reduce(
-    (s, p) => s + rc(p.repostedBy, p.userId),
-    0
-  );
-
-  const initial = (profile.displayName || '?')[0].toUpperCase();
+  const totalPlays = tracks.reduce((acc, t) => acc + (t.plays || 0), 0);
+  const totalLikes = tracks.reduce((acc, t) => acc + (t.likes || 0), 0);
 
   const startEdit = () => {
     setEName(profile.displayName || '');
@@ -115,15 +83,9 @@ export default function ProfileView({
 
   const saveEdit = async () => {
     if (!eName.trim()) return;
-
     setSaving(true);
-
     try {
-      await updateProfile(profile.id, {
-        displayName: eName.trim(),
-        bio: eBio.trim()
-      });
-
+      await updateProfile(profile.id, { displayName: eName.trim(), bio: eBio.trim() });
       await onRefresh?.();
       setEditing(false);
     } catch (e) {
@@ -135,11 +97,8 @@ export default function ProfileView({
 
   const handleAv = async e => {
     const f = e.target.files?.[0];
-
     if (!f) return;
-
     setSaving(true);
-
     try {
       const d = await compressAv(f);
       await updateProfile(profile.id, { avatarUrl: d });
@@ -148,10 +107,7 @@ export default function ProfileView({
       console.error(e);
     } finally {
       setSaving(false);
-
-      if (fRef.current) {
-        fRef.current.value = '';
-      }
+      if (fRef.current) fRef.current.value = '';
     }
   };
 
@@ -160,7 +116,6 @@ export default function ProfileView({
     setFollowLoading(true);
     try {
       await toggleFollow(currentUserId, profile.id, isFollowing);
-      // Optimistically update UI
       setIsFollowing(!isFollowing);
       setFollowStats(prev => ({
         ...prev,
@@ -173,439 +128,270 @@ export default function ProfileView({
     }
   };
 
-  const energy = totalBoosts + totalRelays;
-
-  const rank =
-    energy >= 50
-      ? '🏆 GRANDMASTER'
-      : energy >= 20
-        ? '⚡ MASTER'
-        : energy >= 5
-          ? '📡 DIAMOND'
-          : '🌱 NOVICE';
+  const initial = (profile.displayName || '?')[0].toUpperCase();
 
   return (
-    <div>
-      <div className="pcard-banner">
-        <div className="pcard-av-wrap">
-          <div className="pcard-ring">
-            <div className="pcard-ring-inner">
-              <div className="hex xl">
-                {profile.avatarUrl ? (
-                  <img src={profile.avatarUrl} alt="" />
-                ) : (
-                  initial
-                )}
-              </div>
+    <div className="pb-32 min-h-screen bg-black">
+      {/* Artist Hero Banner */}
+      <div className="relative h-64 w-full bg-[#1c1c1e] overflow-hidden">
+        {/* Blurred background from avatar */}
+        {profile.avatarUrl ? (
+          <div 
+            className="absolute inset-0 bg-cover bg-center opacity-40 blur-2xl transform scale-110"
+            style={{ backgroundImage: `url(${profile.avatarUrl})` }}
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-[#ff9500]/20 to-[#ff3b30]/20" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+        
+        <div className="absolute bottom-0 left-0 w-full p-6 flex items-end gap-4">
+          <div className="relative">
+            <div className="w-24 h-24 rounded-full border-4 border-black overflow-hidden bg-[#2c2c2e] shadow-2xl flex items-center justify-center text-3xl font-bold">
+              {profile.avatarUrl ? (
+                <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-white/50">{initial}</span>
+              )}
             </div>
+            {isOwn && (
+              <>
+                <button
+                  onClick={() => fRef.current?.click()}
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-[#ff9500] rounded-full flex items-center justify-center text-black shadow-lg hover:scale-105 active:scale-95 transition-transform"
+                >
+                  {saving ? <Loader size={14} className="animate-spin" /> : <Camera size={14} />}
+                </button>
+                <input ref={fRef} type="file" accept="image/*" hidden onChange={handleAv} />
+              </>
+            )}
           </div>
-
-          {isOwn && (
-            <>
-              <button
-                onClick={() => fRef.current?.click()}
-                style={{
-                  position: 'absolute',
-                  bottom: 2,
-                  right: -6,
-                  width: 24,
-                  height: 24,
-                  borderRadius: 7,
-                  background: 'var(--cyan)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#000',
-                  boxShadow: '0 2px 10px rgba(0,229,255,0.5)',
-                  zIndex: 5
-                }}
-              >
-                {saving ? <Loader size={9} className="spin" /> : <Camera size={9} />}
-              </button>
-
-              <input
-                ref={fRef}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={handleAv}
-              />
-            </>
-          )}
+          
+          <div className="flex-1 pb-2">
+            {editing ? (
+              <div className="space-y-2">
+                <input
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-[#ff9500]"
+                  value={eName}
+                  onChange={e => setEName(e.target.value)}
+                  maxLength={40}
+                  placeholder="Artist Name"
+                />
+              </div>
+            ) : (
+              <div>
+                <h1 className="text-3xl font-black text-white flex items-center gap-2 font-['Anton'] tracking-wide">
+                  {profile.displayName}
+                  {window.cplayz_config?.verifiedUsers?.includes(profile.id) && (
+                    <CheckCircle size={20} className="text-[#ff9500]" />
+                  )}
+                </h1>
+                <div className="text-sm font-bold text-white/50 uppercase tracking-widest mt-1">Artist</div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="pcard-body">
-        <div className="pcard-row">
-          <div />
-
-          {isOwn && !editing && (
-            <button className="edit-btn" onClick={startEdit}>
-              Edit Profile
-            </button>
-          )}
-
-          {!isOwn && onMessageClick && (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button
-                className={`edit-btn ${isFollowing ? 'text-dark-muted border-dark-border' : 'text-brand-primary border-brand-primary'}`}
-                onClick={handleToggleFollow}
-                disabled={followLoading}
-                style={!isFollowing ? { boxShadow: '0 0 10px rgba(0,229,255,0.2)' } : {}}
-              >
-                {followLoading ? '...' : isFollowing ? 'Unfollow' : 'Follow'}
-              </button>
-              <button className="edit-btn" onClick={() => onMessageClick(profile.id)}>
-                Message
-              </button>
-
-              <div style={{ position: 'relative' }}>
-                <button
-                  className="edit-btn"
-                  style={{ padding: '6px 8px' }}
-                  onClick={() => setShowMenu(v => !v)}
+      <div className="px-6 pt-4">
+        {/* Edit Controls / Follow Buttons */}
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex gap-6 text-sm">
+            <div className="flex flex-col">
+              <span className="text-white font-bold text-lg">{formatNumber(followStats.followers)}</span>
+              <span className="text-white/50 uppercase text-[10px] tracking-wider font-bold">Followers</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-white font-bold text-lg">{formatNumber(followStats.following)}</span>
+              <span className="text-white/50 uppercase text-[10px] tracking-wider font-bold">Following</span>
+            </div>
+          </div>
+          
+          <div className="flex gap-2">
+            {isOwn ? (
+              editing ? (
+                <>
+                  <button onClick={() => setEditing(false)} className="px-4 py-2 rounded-full bg-white/10 text-white font-bold text-xs hover:bg-white/20 transition-colors">Cancel</button>
+                  <button onClick={saveEdit} className="px-4 py-2 rounded-full bg-[#ff9500] text-black font-bold text-xs hover:bg-[#ff9500]/90 transition-colors flex items-center gap-2">
+                    {saving ? <Loader size={12} className="animate-spin" /> : 'Save'}
+                  </button>
+                </>
+              ) : (
+                <button onClick={startEdit} className="px-4 py-2 rounded-full bg-white/10 border border-white/10 text-white font-bold text-xs hover:bg-white/20 transition-colors">
+                  Edit Profile
+                </button>
+              )
+            ) : (
+              <>
+                <button 
+                  onClick={handleToggleFollow}
+                  disabled={followLoading}
+                  className={`px-6 py-2 rounded-full font-bold text-xs transition-colors ${isFollowing ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-[#ff9500] text-black hover:bg-[#ff9500]/90'}`}
                 >
-                  <MoreHorizontal size={16} />
+                  {followLoading ? '...' : isFollowing ? 'Following' : 'Follow'}
                 </button>
                 
-                {showMenu && (
-                  <>
-                    <div
-                      style={{ position: 'fixed', inset: 0, zIndex: 90 }}
-                      onClick={() => setShowMenu(false)}
-                    />
-                    <div
-                      style={{
-                        position: 'absolute', right: 0, top: '100%', marginTop: 8,
-                        background: 'var(--card)', border: '1px solid var(--border)',
-                        borderRadius: 12, padding: 6, zIndex: 100, minWidth: 160,
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                        display: 'flex', flexDirection: 'column', gap: 4
-                      }}
-                    >
-                      <button
-                        className="menu-item"
-                        style={{ color: 'var(--hot)', width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: '8px', textAlign: 'left', fontSize: '13px', fontWeight: 600 }}
-                        onClick={() => {
-                          setShowMenu(false);
-                          setShowReportModal(true);
-                        }}
-                        disabled={reporting}
+                <div className="relative">
+                  <button onClick={() => setShowMenu(!showMenu)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
+                    <MoreHorizontal size={16} />
+                  </button>
+                  
+                  {showMenu && (
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-[#1c1c1e] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+                      <button 
+                        onClick={() => { setShowMenu(false); setShowReportModal(true); }}
+                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/5 flex items-center gap-2"
                       >
-                        <Flag size={14} /> Report User
+                        <Flag size={14} /> Report Artist
                       </button>
-                      <button
-                        className="menu-item"
-                        style={{ color: 'var(--hot)', width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: '8px', textAlign: 'left', fontSize: '13px', fontWeight: 600 }}
+                      <button 
                         onClick={async () => {
                           setShowMenu(false);
                           setActionLoading(true);
-                          if (isBlocked) {
-                            await unblockUser(currentUserId, profile.id);
-                          } else {
-                            await blockUser(currentUserId, profile.id);
-                          }
+                          if (isBlocked) await unblockUser(currentUserId, profile.id);
+                          else await blockUser(currentUserId, profile.id);
                           await refreshBlocks();
                           setActionLoading(false);
                         }}
                         disabled={actionLoading}
+                        className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-white/5 flex items-center gap-2 border-t border-white/5"
                       >
-                        {isBlocked ? <Shield size={14} /> : <ShieldOff size={14} />} {isBlocked ? "Unblock User" : "Block User"}
+                        {isBlocked ? <Shield size={14} /> : <ShieldOff size={14} />} 
+                        {isBlocked ? "Unblock Artist" : "Block Artist"}
                       </button>
                     </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          {isOwn && editing && (
-            <div style={{ display: 'flex', gap: 4 }}>
-              <button className="edit-btn" onClick={() => setEditing(false)}>
-                <X size={11} />
-              </button>
-
-              <button
-                className="edit-btn"
-                onClick={saveEdit}
-                style={{ borderColor: 'var(--cyan)', color: 'var(--cyan)' }}
-              >
-                {saving ? <Loader size={11} className="spin" /> : <Check size={11} />}
-              </button>
-            </div>
-          )}
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
+        {/* Bio */}
         {editing ? (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6,
-              marginBottom: 10
-            }}
-          >
-            <input
-              className="edit-box"
-              value={eName}
-              onChange={e => setEName(e.target.value)}
-              maxLength={40}
-              placeholder="Core name"
-            />
-
-            <textarea
-              className="edit-box"
-              value={eBio}
-              onChange={e => setEBio(e.target.value)}
-              maxLength={160}
-              rows={2}
-              placeholder="Profile description..."
-              style={{ resize: 'none', lineHeight: 1.5 }}
-            />
-          </div>
+          <textarea
+            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 text-sm focus:outline-none focus:border-[#ff9500] mb-6"
+            value={eBio}
+            onChange={e => setEBio(e.target.value)}
+            maxLength={160}
+            rows={3}
+            placeholder="Artist bio..."
+          />
         ) : (
-          <>
-            <div className="pcard-name">
-              {profile.displayName}
-
-              {window.cplayz_config?.verifiedUsers?.includes(profile.id) && (
-                <CheckCircle
-                  size={18}
-                  color="#00e5ff"
-                  style={{ marginLeft: 6, display: 'inline' }}
-                />
-              )}
-            </div>
-
-            <div className="pcard-joined">
-              Core created · {timeAgo(profile.created)}
-            </div>
-
-            {profile.bio && (
-              <div className="pcard-bio">
-                {profile.bio}
-              </div>
-            )}
-            
-            <div className="flex gap-4 mt-3 mb-1 text-sm">
-              <div className="text-brand-primary">
-                <span className="font-bold text-white">{formatNumber(followStats.following)}</span> Following
-              </div>
-              <div className="text-brand-primary">
-                <span className="font-bold text-white">{formatNumber(followStats.followers)}</span> Followers
-              </div>
-            </div>
-          </>
+          profile.bio && <p className="text-white/80 text-sm mb-6 leading-relaxed">{profile.bio}</p>
         )}
 
-        <div className="rank-badge">
-          {rank} · {formatCount(energy)} Tokens &amp; PRs
-        </div>
-
-        <div className="stat-grid">
-          <div className="stat-cell">
-            <div className="stat-val">{formatCount(myPosts.length)}</div>
-            <div className="stat-key">Posts</div>
+        {/* Stats */}
+        <div className="flex gap-4 mb-8">
+          <div className="bg-[#1c1c1e] flex-1 rounded-xl p-4 border border-white/5 text-center">
+            <div className="text-2xl font-black text-white">{formatNumber(tracks.length)}</div>
+            <div className="text-[10px] font-bold text-white/50 uppercase tracking-widest mt-1">Tracks</div>
           </div>
-
-          <div className="stat-cell">
-            <div className="stat-val">{formatCount(totalBoosts)}</div>
-            <div className="stat-key">Hypes</div>
+          <div className="bg-[#1c1c1e] flex-1 rounded-xl p-4 border border-white/5 text-center">
+            <div className="text-2xl font-black text-[#ff9500]">{formatNumber(totalPlays)}</div>
+            <div className="text-[10px] font-bold text-white/50 uppercase tracking-widest mt-1">Plays</div>
           </div>
-
-          <div className="stat-cell">
-            <div className="stat-val">{formatCount(totalDetections)}</div>
-            <div className="stat-key">Views</div>
-          </div>
-
-          <div className="stat-cell">
-            <div className="stat-val">{formatCount(totalRelays)}</div>
-            <div className="stat-key">Shares</div>
+          <div className="bg-[#1c1c1e] flex-1 rounded-xl p-4 border border-white/5 text-center">
+            <div className="text-2xl font-black text-white">{formatNumber(totalLikes)}</div>
+            <div className="text-[10px] font-bold text-white/50 uppercase tracking-widest mt-1">Likes</div>
           </div>
         </div>
+
+        {/* Top Tracks */}
+        <h2 className="text-xl font-bold text-white mb-4">Latest Releases</h2>
+        {loadingTracks ? (
+          <div className="text-center py-8 text-white/50 text-sm">Loading tracks...</div>
+        ) : tracks.length === 0 ? (
+          <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl text-white/40 text-sm font-bold">
+            No tracks released yet.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {tracks.map((track, i) => {
+              const coverUrl = track.coverArt ? pb.files.getUrl(track, track.coverArt) : 'https://placehold.co/100x100/1c1c1e/ff9500?text=CP';
+              return (
+                <div key={track.id} className="flex items-center gap-4 p-2 rounded-xl hover:bg-[#1c1c1e] transition-colors group cursor-pointer">
+                  <div className="w-6 text-center text-sm font-bold text-white/30">{i + 1}</div>
+                  <div className="w-12 h-12 rounded-lg overflow-hidden relative flex-shrink-0 bg-black">
+                    <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Play size={16} className="text-white" fill="currentColor" />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-white truncate group-hover:text-[#ff9500] transition-colors">{track.title}</div>
+                    <div className="text-xs text-white/50 truncate">{formatNumber(track.plays || 0)} plays</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Settings (Own Profile) */}
+        {isOwn && (
+          <div className="mt-12 pt-6 border-t border-white/10 space-y-3">
+            <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-4">Account Settings</h3>
+            <button
+              onClick={() => {
+                if (window.confirm('Sign out of CaisterPlayz?')) {
+                  pb.authStore.clear();
+                  window.location.reload();
+                }
+              }}
+              className="w-full bg-[#1c1c1e] hover:bg-[#2c2c2e] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors border border-white/5"
+            >
+              <LogOut size={18} /> Sign Out
+            </button>
+            <button
+              onClick={() => {
+                const key = prompt('Enter Admin Signal Key:');
+                if (key && key.trim() === 'CAISTER_CORE_ADMIN') {
+                  localStorage.setItem('caister_admin', key.trim());
+                  window.location.reload();
+                } else if (key) {
+                  alert('Signal key denied.');
+                }
+              }}
+              className="w-full text-white/40 hover:text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
+            >
+              <ShieldAlert size={16} /> Admin Access
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="ptabs">
-        {[
-          ['broadcasts', '🏆', 'Posts'],
-          ['visuals', '🖼️', 'Media'],
-          ['boosted', '🔥', 'Hyped']
-        ].map(([k, icon, label]) => (
-          <button
-            key={k}
-            className={`ptab${tab === k ? ' on' : ''}`}
-            onClick={() => setTab(k)}
-          >
-            {icon} {label}
-          </button>
-        ))}
-      </div>
-
-      {tabData.length === 0 ? (
-        <div className="empty">
-          <div className="empty-ico">
-            {tab === 'broadcasts' ? '📡' : tab === 'visuals' ? '🖼️' : '⚡'}
-          </div>
-
-          <h3>No {tab === 'broadcasts' ? 'signals' : tab === 'visuals' ? 'visual signals' : 'boosted signals'}</h3>
-        </div>
-      ) : (
-        <div className="grid" style={{ padding: '10px 10px' }}>
-          {tabData.map(p => (
-            <GridCard
-              key={p.id}
-              post={p}
-              users={users}
-              onClick={setExpanded}
-            />
-          ))}
-        </div>
-      )}
-
-      {isOwn && (
-        <div style={{ textAlign: 'center', padding: '20px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Theme Selector */}
-          <div className="bg-dark-surface p-4 rounded-xl border border-dark-border">
-            <h3 className="text-sm font-bold text-dark-muted mb-3 uppercase tracking-wider text-left">App Theme</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {['cyberpunk', 'neonGreen', 'bloodRed', 'gold'].map(t => (
+      {/* Report Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowReportModal(false)}>
+          <div className="w-full max-w-md bg-[#1c1c1e] rounded-t-3xl p-6 border-t border-white/10" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-white">Report {profile.displayName}</h3>
+              <button onClick={() => setShowReportModal(false)} className="text-white/50 hover:text-white"><X size={20} /></button>
+            </div>
+            <p className="text-sm text-white/50 mb-6">Why are you reporting this artist? Our team reviews all reports.</p>
+            <div className="space-y-2">
+              {['Copyright Infringement', 'Inappropriate Content', 'Spam', 'Impersonation', 'Other'].map(reason => (
                 <button
-                  key={t}
-                  onClick={() => {
-                    localStorage.setItem('cplayz_theme', t);
-                    window.location.reload();
+                  key={reason}
+                  onClick={async () => {
+                    setShowReportModal(false);
+                    setReporting(true);
+                    try {
+                      await reportUser(currentUserId, profile.id, reason);
+                      alert('Report submitted successfully.');
+                    } catch (e) {
+                      alert('Failed to submit report.');
+                    } finally {
+                      setReporting(false);
+                    }
                   }}
-                  className={`p-2 rounded-lg border capitalize text-sm font-bold transition-all ${localStorage.getItem('cplayz_theme') === t || (!localStorage.getItem('cplayz_theme') && t === 'cyberpunk') ? 'border-brand-primary bg-brand-primary/10 text-brand-primary' : 'border-dark-border text-dark-muted hover:border-gray-500'}`}
+                  className="w-full text-left px-4 py-3 rounded-xl bg-black/50 border border-white/5 text-sm font-bold text-white hover:bg-white/10 transition-colors"
                 >
-                  {t.replace(/([A-Z])/g, ' $1').trim()}
+                  {reason}
                 </button>
               ))}
             </div>
-          </div>
-
-          <button
-            style={{ width: '100%', padding: '14px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: 'pointer' }}
-            onClick={() => {
-              if (window.confirm('Sign out of your CaisterPlayz session?')) {
-                pb.authStore.clear();
-                window.location.reload();
-              }
-            }}
-          >
-            <LogOut size={18} /> Sign Out
-          </button>
-
-          <button
-            className="admin-login-btn"
-            style={{ color: '#f43f5e', borderColor: '#f43f5e' }}
-            onClick={async () => {
-              if (window.confirm('WARNING: Are you sure you want to permanently delete your account? This action cannot be undone.')) {
-                try {
-                  await pb.collection('users').delete(currentUserId);
-                  pb.authStore.clear();
-                  window.location.reload();
-                } catch(e) {
-                  alert('Could not delete account.');
-                  console.error(e);
-                }
-              }
-            }}
-          >
-            <Trash2 size={16} /> Delete Account
-          </button>
-
-          <button
-            className="admin-login-btn"
-            onClick={() => {
-              const key = prompt('Enter Admin Signal Key:');
-
-              if (key && key.trim() === 'CAISTER_CORE_ADMIN') {
-                localStorage.setItem('caister_admin', key.trim());
-                window.location.reload();
-              } else if (key) {
-                alert('Signal key denied.');
-              }
-            }}
-          >
-            <ShieldAlert size={16} /> Control Center Access
-          </button>
-        </div>
-      )}
-
-      {expanded && (
-        <ExpandedBroadcast
-          post={expanded}
-          currentUserId={currentUserId}
-          users={users}
-          onClose={() => setExpanded(null)}
-        />
-      )}
-
-      {/* ── REPORT USER MODAL ── */}
-      {showReportModal && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, zIndex: 9999,
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-          }}
-          onClick={() => setShowReportModal(false)}
-        >
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} />
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'relative', width: '100%', maxWidth: 420,
-              background: 'var(--surface)', borderRadius: '20px 20px 0 0',
-              padding: 20, paddingBottom: 32,
-              border: '1px solid var(--border)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--text)' }}>Report @{profile.displayName}</span>
-              <button
-                onClick={() => setShowReportModal(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 14 }}>
-              Why are you reporting this account? All reports are reviewed by our team.
-            </p>
-            {[
-              'Harassment or bullying',
-              'Spam or misleading',
-              'Impersonation',
-              'Hate speech',
-              'Inappropriate content',
-              'Other'
-            ].map((reason) => (
-              <button
-                key={reason}
-                onClick={async () => {
-                  setShowReportModal(false);
-                  setReporting(true);
-                  try {
-                    await reportUser(currentUserId, profile.id, reason);
-                    alert(`Report submitted: "${reason}". Thank you — our team will review this.`);
-                  } catch (err) {
-                    console.error('Report failed:', err);
-                    alert('Error submitting report. Please try again.');
-                  } finally {
-                    setReporting(false);
-                  }
-                }}
-                style={{
-                  display: 'block', width: '100%', textAlign: 'left',
-                  padding: '10px 14px', marginBottom: 6,
-                  background: 'var(--bg)', border: '1px solid var(--border)',
-                  borderRadius: 12, color: 'var(--text)', fontSize: 13,
-                  fontWeight: 600, cursor: 'pointer',
-                }}
-              >
-                {reason}
-              </button>
-            ))}
           </div>
         </div>
       )}
