@@ -1021,6 +1021,7 @@ extension Foundation.Data {
   #endif
   @objc public func getBoolean(_ configKey: Swift.String, _ defaultValue: Swift.Bool) -> Swift.Bool
   @objc public func getInt(_ configKey: Swift.String, _ defaultValue: Swift.Int) -> Swift.Int
+  @objc public func getDouble(_ configKey: Swift.String, _ defaultValue: Swift.Double) -> Swift.Double
   #if compiler(>=5.3) && $NonescapableTypes
   public func getArray(_ configKey: Swift.String, _ defaultValue: Capacitor.JSArray? = nil) -> Capacitor.JSArray?
   #endif

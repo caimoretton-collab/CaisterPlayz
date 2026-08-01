@@ -1,10 +1,11 @@
 {
-	"appId": "com.caisterplayz.social",
+	"appId": "CaisterNetApp.socialapp",
 	"appName": "CaisterPlayz",
 	"webDir": "dist",
 	"server": {
-		"androidScheme": "https",
-		"iosScheme": "https"
+		"androidScheme": "http",
+		"iosScheme": "http",
+		"cleartext": true
 	},
 	"plugins": {
 		"SplashScreen": {
@@ -23,9 +24,5 @@
 		"preferredContentMode": "mobile",
 		"scheme": "CaisterPlayz"
 	},
-	"packageClassList": [
-		"HapticsPlugin",
-		"SplashScreenPlugin",
-		"StatusBarPlugin"
-	]
+	"packageClassList": []
 }

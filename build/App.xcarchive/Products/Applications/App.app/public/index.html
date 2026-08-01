@@ -2,18 +2,267 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
-    <meta name="description" content="CaisterPlayz — A real-time social media platform. Share, connect, and discover." />
-    <meta name="theme-color" content="#000000" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+
+    <!-- SEO -->
+    <title>CaisterPlayz — Gaming & Fitness</title>
+
+    <meta
+      name="description"
+      content="The social network for gamers and fitness grinders. Share wins, track gains, find squads, and level up."
+    />
+
+    <meta
+      name="keywords"
+      content="gaming, fitness, workout, gains, gym, squads, tournaments, battle royale, grind"
+    />
+
+    <!-- PWA -->
+    <meta name="theme-color" content="#0a0f1d" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>CaisterPlayz</title>
-    <script type="module" crossorigin src="/assets/index-gevW71o5.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-C0Gahc2v.css">
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+
+    <meta
+      name="apple-mobile-web-app-title"
+      content="CaisterPlayz"
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="CaisterPlayz — Gaming & Fitness" />
+
+    <meta
+      property="og:description"
+      content="Drop In. Grind Hard. Share Wins & Gains."
+    />
+
+    <meta property="og:type" content="website" />
+
+    <!-- Fonts -->
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    />
+
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" crossorigin src="/assets/index-D3rMZuoU.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DWkBX8vf.css">
   <link rel="manifest" href="/manifest.webmanifest"></head>
+
   <body>
-    <div id="root"></div>
+    <div id="root">
+
+      <style>
+        * {
+          box-sizing: border-box;
+        }
+
+        body {
+          margin: 0;
+          overflow: hidden;
+          background:
+            radial-gradient(
+              circle at top,
+              rgba(59,130,246,.15),
+              transparent 35%
+            ),
+            #070b14;
+
+          color: white;
+
+          font-family:
+            "Plus Jakarta Sans",
+            system-ui,
+            sans-serif;
+        }
+
+        .startup-loader {
+          position: fixed;
+          inset: 0;
+
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+
+          gap: 20px;
+
+          background: #070b14;
+
+          z-index: 99999;
+        }
+
+        /* Scanline overlay */
+        .startup-loader::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 2px,
+            rgba(0, 229, 255, 0.02) 2px,
+            rgba(0, 229, 255, 0.02) 4px
+          );
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        .logo-container {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          z-index: 2;
+        }
+
+        .logo-icon {
+          width: 60px;
+          height: 60px;
+
+          border-radius: 16px;
+
+          background:
+            linear-gradient(
+              135deg,
+              #00e5ff,
+              #7c3aed,
+              #f43f5e
+            );
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          box-shadow:
+            0 0 30px rgba(0,229,255,0.35),
+            0 0 60px rgba(124,58,237,0.15);
+
+          animation: float 2s ease-in-out infinite;
+          font-family: 'Arial Black', 'Impact', sans-serif;
+          font-size: 26px;
+          font-weight: 900;
+          color: white;
+          letter-spacing: -2px;
+        }
+
+        .logo-text {
+          font-size: 2rem;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+
+          background:
+            linear-gradient(
+              90deg,
+              #00e5ff,
+              #a78bfa,
+              #f43f5e
+            );
+
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .tagline {
+          font-size: 0.85rem;
+          color: #94a3b8;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+          z-index: 2;
+        }
+
+        .loading-bar {
+          width: 220px;
+          height: 8px;
+
+          border-radius: 999px;
+
+          overflow: hidden;
+
+          background:
+            rgba(255,255,255,.08);
+
+          z-index: 2;
+        }
+
+        .loading-fill {
+          width: 50%;
+          height: 100%;
+
+          background:
+            linear-gradient(
+              90deg,
+              #00e5ff,
+              #7c3aed,
+              #f43f5e
+            );
+
+          animation: loading 1.2s infinite;
+        }
+
+        @keyframes loading {
+          0% {
+            transform: translateX(-100%);
+          }
+
+          100% {
+            transform: translateX(300%);
+          }
+        }
+
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+
+          50% {
+            transform: translateY(-5px);
+          }
+        }
+      </style>
+
+      <div class="startup-loader">
+
+        <div class="logo-container">
+
+          <div class="logo-icon">
+            CP
+          </div>
+
+          <div class="logo-text">
+            CAISTERPLAYZ
+          </div>
+
+        </div>
+
+        <div class="tagline">
+          Drop In • Grind Hard
+        </div>
+
+        <div class="loading-bar">
+          <div class="loading-fill"></div>
+        </div>
+
+      </div>
+    </div>
+
   </body>
 </html>
