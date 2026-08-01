@@ -24,12 +24,12 @@ export default defineConfig({
       ],
 
       manifest: {
-        name: 'CaisterPlayz — Fortnite & Fitness',
+        name: 'CaisterPlayz Music',
         short_name: 'CaisterPlayz',
         description:
-          'The social network for Fortnite gamers and fitness grinders. Share wins, track gains, find squads.',
-        theme_color: '#0a0e27',
-        background_color: '#0a0e27',
+          'The social network for music artists. Share tracks, find new artists, and level up your library.',
+        theme_color: '#000000',
+        background_color: '#000000',
         display: 'standalone',
 
         icons: [
