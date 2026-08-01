@@ -7,8 +7,9 @@ import { applyTheme } from './utils';
 import ListenNowView from './components/ListenNowView';
 import LibraryView from './components/LibraryView';
 import UploadView from './components/UploadView';
+import SearchView from './components/SearchView';
 import MusicPlayer from './components/MusicPlayer';
-import ProfileView from './components/ProfileView'; // Keep if it exists, otherwise we'll conditionally render it
+import ProfileView from './components/ProfileView';
 import AuthView from './components/AuthView';
 import DirectMessages from './components/DirectMessages';
 import { useAllUsers, useSystemConfig, useUserProfile } from './hooks';
@@ -150,9 +151,11 @@ export default function App() {
           {tab === 'upload' && <UploadView currentUserId={userId} onUploadSuccess={() => goTab('library')} />}
           
           {tab === 'search' && (
-            <div className="p-8 text-center text-white/50 border border-white/10 m-4 rounded-2xl border-dashed">
-              Search coming soon...
-            </div>
+            <SearchView 
+              currentUserId={userId} 
+              onPlayTrack={handlePlayTrack}
+              onProfileClick={(uid) => { /* Optional: Navigate to profile */ }} 
+            />
           )}
           
           {tab === 'profile' && (
