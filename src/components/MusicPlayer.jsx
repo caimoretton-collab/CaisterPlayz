@@ -57,7 +57,10 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
       // Log play after 10 seconds
       if (current > 10 && !hasLoggedPlay && track) {
         setHasLoggedPlay(true);
-        pb.collection('cplayz_tracks').update(track.id, { plays: (track.plays || 0) + 1 }).catch(() => {});
+        // Only count the play if the listener is NOT the uploader of the track
+        if (track.userId !== currentUserId) {
+          pb.collection('cplayz_tracks').update(track.id, { plays: (track.plays || 0) + 1 }).catch(() => {});
+        }
       }
     }
   };
