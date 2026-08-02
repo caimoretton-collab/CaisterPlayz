@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Maximize2, Minimize2, Heart, MessageCircle } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Maximize2, Minimize2, Heart, MessageCircle, AlignLeft } from 'lucide-react';
 import pb from '../pocketbase';
 
 export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
@@ -7,6 +7,7 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isLyricsMode, setIsLyricsMode] = useState(false);
   const audioRef = useRef(null);
   const [hasLoggedPlay, setHasLoggedPlay] = useState(false);
   
@@ -138,9 +139,25 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="w-full max-w-sm aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-[#ff9500]/20 mb-10 border border-white/10">
-            <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
-          </div>
+          {!isLyricsMode ? (
+            <div className="w-full max-w-sm aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-[#ff9500]/20 mb-10 border border-white/10 transition-all">
+              <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <div className="w-full max-w-sm aspect-square rounded-2xl overflow-y-auto mb-10 border border-white/10 bg-black/40 backdrop-blur-3xl p-6 hide-scrollbar relative transition-all">
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 pointer-events-none z-10" />
+              {track.lyrics ? (
+                <div className="text-2xl font-bold text-white/90 leading-relaxed tracking-wide pb-16 whitespace-pre-wrap">
+                  {track.lyrics}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-white/40">
+                  <AlignLeft size={48} className="mb-4 opacity-50" />
+                  <p className="font-bold">No lyrics provided.</p>
+                </div>
+              )}
+            </div>
+          )}
           
           <div className="w-full max-w-sm px-4">
             <div className="flex justify-between items-end mb-6">
@@ -169,6 +186,16 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
                 {isPlaying ? <Pause size={36} fill="currentColor" /> : <Play size={36} fill="currentColor" className="ml-2" />}
               </button>
               <button onClick={(e) => { e.stopPropagation(); onNext(); }} className="p-4 text-white hover:text-[#ff9500] transition-colors active:scale-95"><SkipForward size={36} fill="currentColor" /></button>
+            </div>
+            
+            {/* Secondary Controls (Lyrics) */}
+            <div className="flex justify-between items-center px-6 mt-6">
+              <button 
+                onClick={(e) => { e.stopPropagation(); setIsLyricsMode(!isLyricsMode); }} 
+                className={`p-3 rounded-xl transition-all active:scale-95 ${isLyricsMode ? 'bg-white/20 text-white' : 'text-white/50 hover:bg-white/10 hover:text-white'}`}
+              >
+                <AlignLeft size={24} />
+              </button>
             </div>
           </div>
         </div>
