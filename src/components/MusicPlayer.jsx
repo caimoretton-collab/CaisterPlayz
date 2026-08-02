@@ -9,7 +9,10 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLyricsMode, setIsLyricsMode] = useState(false);
   const audioRef = useRef(null);
+  const lyricsContainerRef = useRef(null);
   const [hasLoggedPlay, setHasLoggedPlay] = useState(false);
+  const [parsedLyrics, setParsedLyrics] = useState(null);
+  const [activeLineIdx, setActiveLineIdx] = useState(-1);
   
   // Engagement
   const [likes, setLikes] = useState(track?.likes || 0);
@@ -36,6 +39,57 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
       }
     }
   }, [isPlaying]);
+
+  useEffect(() => {
+    if (track && track.lyrics) {
+      const lrcRegex = /\[\d{2}:\d{2}\.\d{2,3}\]/;
+      if (lrcRegex.test(track.lyrics)) {
+        const lines = track.lyrics.split('\n');
+        const parsed = [];
+        lines.forEach(line => {
+          const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/);
+          if (match) {
+            const minutes = parseInt(match[1], 10);
+            const seconds = parseInt(match[2], 10);
+            const milliseconds = parseInt(match[3], 10);
+            const time = minutes * 60 + seconds + (milliseconds / (match[3].length === 3 ? 1000 : 100));
+            const text = match[4].trim();
+            if (text) {
+              parsed.push({ time, text });
+            }
+          }
+        });
+        setParsedLyrics(parsed.length > 0 ? parsed : null);
+      } else {
+        setParsedLyrics(null);
+      }
+    } else {
+      setParsedLyrics(null);
+    }
+  }, [track]);
+
+  useEffect(() => {
+    if (parsedLyrics) {
+      let currentIdx = -1;
+      for (let i = 0; i < parsedLyrics.length; i++) {
+        if (progress >= parsedLyrics[i].time) {
+          currentIdx = i;
+        } else {
+          break;
+        }
+      }
+      setActiveLineIdx(currentIdx);
+    }
+  }, [progress, parsedLyrics]);
+
+  useEffect(() => {
+    if (isLyricsMode && activeLineIdx >= 0 && lyricsContainerRef.current) {
+      const activeElement = lyricsContainerRef.current.querySelector(`[data-idx="${activeLineIdx}"]`);
+      if (activeElement) {
+        activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [activeLineIdx, isLyricsMode]);
 
   const checkIfLiked = async () => {
     if (!track || !currentUserId) return;
@@ -149,7 +203,33 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
           ) : (
             <div className="w-full max-w-sm aspect-square rounded-2xl overflow-y-auto mb-10 border border-white/10 bg-black/40 backdrop-blur-3xl p-6 hide-scrollbar relative transition-all">
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 pointer-events-none z-10" />
-              {track.lyrics ? (
+              {parsedLyrics ? (
+                <div className="w-full pb-[50vh] pt-[20vh]" ref={lyricsContainerRef}>
+                  {parsedLyrics.map((line, idx) => {
+                    const isActive = idx === activeLineIdx;
+                    return (
+                      <p 
+                        key={idx} 
+                        data-idx={idx}
+                        className={`text-2xl font-bold leading-relaxed tracking-wide mb-6 transition-all duration-500 ease-out cursor-pointer ${
+                          isActive 
+                            ? 'text-white scale-105 origin-left blur-none' 
+                            : 'text-white/40 blur-[1px] hover:text-white/70 hover:blur-none'
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (audioRef.current) {
+                            audioRef.current.currentTime = line.time;
+                            setProgress(line.time);
+                          }
+                        }}
+                      >
+                        {line.text}
+                      </p>
+                    );
+                  })}
+                </div>
+              ) : track.lyrics ? (
                 <div className="w-full pb-16">
                   {track.lyrics.split('\n').map((line, idx) => (
                     <p 
