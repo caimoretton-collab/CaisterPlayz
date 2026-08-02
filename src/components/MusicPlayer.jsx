@@ -53,7 +53,11 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
 
   useEffect(() => {
     if (isLyricsMode && !fetchedLyrics && !fetchingLyrics && track) {
-      fetchLyrics();
+      if (track.lyrics) {
+        setFetchedLyrics(track.lyrics);
+      } else {
+        fetchLyrics();
+      }
     }
   }, [isLyricsMode, track]);
 
