@@ -271,6 +271,42 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
             <div className="w-full max-w-sm aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-[#ff9500]/20 mb-10 border border-white/10 transition-all">
               <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
             </div>
+          ) : isSyncStudioMode ? (
+            <div className="w-full max-w-sm flex-1 mb-10 border border-[#ff9500]/30 bg-black/60 backdrop-blur-3xl p-6 rounded-2xl relative flex flex-col items-center shadow-[0_0_50px_rgba(255,149,0,0.2)]">
+              <div className="w-full flex-1 overflow-y-auto hide-scrollbar pb-10" ref={lyricsContainerRef}>
+                {syncLines.map((line, idx) => {
+                  const isCurrent = idx === currentSyncIdx;
+                  const isDone = idx < currentSyncIdx;
+                  
+                  if (isCurrent && lyricsContainerRef.current) {
+                    const el = lyricsContainerRef.current.querySelector(`[data-sync-idx="${idx}"]`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                  
+                  return (
+                    <p 
+                      key={idx} 
+                      data-sync-idx={idx}
+                      className={`text-2xl font-bold leading-relaxed tracking-wide mb-6 transition-all duration-300 text-center ${
+                        isCurrent ? 'text-[#ff9500] scale-110' : isDone ? 'text-white/40' : 'text-white/80'
+                      }`}
+                    >
+                      {line}
+                    </p>
+                  );
+                })}
+              </div>
+              
+              <div className="w-full mt-4">
+                <button 
+                  onClick={handleSyncTap}
+                  disabled={savingSync}
+                  className="w-full py-6 rounded-2xl bg-[#ff9500] text-black font-black text-xl tracking-widest uppercase active:scale-95 transition-transform flex items-center justify-center gap-2"
+                >
+                  {savingSync ? 'Saving...' : 'Tap to Sync Line'} <CheckCircle2 />
+                </button>
+              </div>
+            </div>
           ) : (
             <div className="w-full max-w-sm aspect-square rounded-2xl overflow-y-auto mb-10 border border-white/10 bg-black/40 backdrop-blur-3xl p-6 hide-scrollbar relative transition-all">
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 pointer-events-none z-10" />
@@ -320,44 +356,7 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
                 </div>
               )}
             </div>
-          ) : isSyncStudioMode ? (
-            <div className="w-full max-w-sm flex-1 mb-10 border border-[#ff9500]/30 bg-black/60 backdrop-blur-3xl p-6 rounded-2xl relative flex flex-col items-center shadow-[0_0_50px_rgba(255,149,0,0.2)]">
-              <div className="w-full flex-1 overflow-y-auto hide-scrollbar pb-10" ref={lyricsContainerRef}>
-                {syncLines.map((line, idx) => {
-                  const isCurrent = idx === currentSyncIdx;
-                  const isDone = idx < currentSyncIdx;
-                  
-                  // Auto scroll during sync
-                  if (isCurrent && lyricsContainerRef.current) {
-                    const el = lyricsContainerRef.current.querySelector(`[data-sync-idx="${idx}"]`);
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  }
-                  
-                  return (
-                    <p 
-                      key={idx} 
-                      data-sync-idx={idx}
-                      className={`text-2xl font-bold leading-relaxed tracking-wide mb-6 transition-all duration-300 text-center ${
-                        isCurrent ? 'text-[#ff9500] scale-110' : isDone ? 'text-white/40' : 'text-white/80'
-                      }`}
-                    >
-                      {line}
-                    </p>
-                  );
-                })}
-              </div>
-              
-              <div className="w-full mt-4">
-                <button 
-                  onClick={handleSyncTap}
-                  disabled={savingSync}
-                  className="w-full py-6 rounded-2xl bg-[#ff9500] text-black font-black text-xl tracking-widest uppercase active:scale-95 transition-transform flex items-center justify-center gap-2"
-                >
-                  {savingSync ? 'Saving...' : 'Tap to Sync Line'} <CheckCircle2 />
-                </button>
-              </div>
-            </div>
-          ) : null}
+          )}
           
           <div className="w-full max-w-sm px-4">
             <div className="flex justify-between items-end mb-6">
