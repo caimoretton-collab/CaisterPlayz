@@ -38,7 +38,14 @@ export default function UploadView({ currentUserId, onUploadSuccess }) {
       if (onUploadSuccess) onUploadSuccess();
     } catch (err) {
       console.error(err);
-      alert('Failed to upload track: ' + err.message);
+      let errorMsg = 'Failed to upload track.';
+      if (err.response && err.response.data) {
+        const details = Object.entries(err.response.data)
+          .map(([field, info]) => `${field}: ${info.message}`)
+          .join('\n');
+        if (details) errorMsg += '\n\nReason:\n' + details;
+      }
+      alert(errorMsg);
     } finally {
       setUploading(false);
     }
@@ -74,13 +81,13 @@ export default function UploadView({ currentUserId, onUploadSuccess }) {
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-white/50 mb-1 uppercase tracking-wider">Audio File (MP3/WAV)</label>
+          <label className="block text-xs font-bold text-white/50 mb-1 uppercase tracking-wider">Audio File (MP3/WAV/MP4)</label>
           <label className="w-full flex items-center justify-center gap-3 bg-[#0c0c0c] border border-white/10 border-dashed rounded-xl px-4 py-8 text-white/70 cursor-pointer hover:bg-white/5 transition-colors">
             <Music size={24} />
             <span>{audioFile ? audioFile.name : 'Tap to select audio file'}</span>
             <input 
               type="file" 
-              accept="audio/*" 
+              accept="audio/*,video/mp4,.mp4,.m4a" 
               className="hidden"
               onChange={e => setAudioFile(e.target.files[0])}
               disabled={uploading}
