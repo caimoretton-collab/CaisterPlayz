@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Maximize2, Minimize2, Heart, MessageCircle, AlignLeft } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Maximize2, Minimize2, Heart, MessageCircle, AlignLeft, Wand2, CheckCircle2 } from 'lucide-react';
 import pb from '../pocketbase';
 
 export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
@@ -13,6 +13,13 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
   const [hasLoggedPlay, setHasLoggedPlay] = useState(false);
   const [parsedLyrics, setParsedLyrics] = useState(null);
   const [activeLineIdx, setActiveLineIdx] = useState(-1);
+  
+  // Sync Studio State
+  const [isSyncStudioMode, setIsSyncStudioMode] = useState(false);
+  const [syncLines, setSyncLines] = useState([]);
+  const [currentSyncIdx, setCurrentSyncIdx] = useState(0);
+  const [syncedTimestamps, setSyncedTimestamps] = useState([]);
+  const [savingSync, setSavingSync] = useState(false);
   
   // Engagement
   const [likes, setLikes] = useState(track?.likes || 0);
@@ -90,6 +97,68 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
       }
     }
   }, [activeLineIdx, isLyricsMode]);
+
+  const startSyncStudio = (e) => {
+    e.stopPropagation();
+    if (!track.lyrics) return;
+    
+    // Strip any existing timestamps to get pure text
+    const cleanLines = track.lyrics.split('\n').map(line => line.replace(/\[\d{2}:\d{2}\.\d{2,3}\]/g, '').trim()).filter(line => line);
+    setSyncLines(cleanLines);
+    setCurrentSyncIdx(0);
+    setSyncedTimestamps([]);
+    setIsSyncStudioMode(true);
+    
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      setProgress(0);
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+    }
+  };
+
+  const handleSyncTap = (e) => {
+    e.stopPropagation();
+    if (audioRef.current && currentSyncIdx < syncLines.length) {
+      const time = audioRef.current.currentTime;
+      setSyncedTimestamps(prev => [...prev, time]);
+      
+      const nextIdx = currentSyncIdx + 1;
+      setCurrentSyncIdx(nextIdx);
+      
+      if (nextIdx >= syncLines.length) {
+        finishSyncStudio([...syncedTimestamps, time]);
+      }
+    }
+  };
+
+  const formatLrcTime = (timeSeconds) => {
+    const minutes = Math.floor(timeSeconds / 60);
+    const seconds = Math.floor(timeSeconds % 60);
+    const milliseconds = Math.floor((timeSeconds % 1) * 100);
+    return `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}]`;
+  };
+
+  const finishSyncStudio = async (finalTimestamps) => {
+    setSavingSync(true);
+    try {
+      const lrcLines = syncLines.map((line, i) => {
+        const t = finalTimestamps[i];
+        return `${formatLrcTime(t)} ${line}`;
+      });
+      const newLyrics = lrcLines.join('\n');
+      
+      await pb.collection('cplayz_tracks').update(track.id, { lyrics: newLyrics });
+      track.lyrics = newLyrics; // update local instantly
+      
+      alert('Lyrics synced successfully!');
+      setIsSyncStudioMode(false);
+    } catch (e) {
+      console.error('Error saving synced lyrics', e);
+      alert('Failed to save synced lyrics.');
+    } finally {
+      setSavingSync(false);
+    }
+  };
 
   const checkIfLiked = async () => {
     if (!track || !currentUserId) return;
@@ -191,12 +260,14 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
           <button onClick={() => setIsExpanded(false)} className="p-2 text-white/70 hover:text-white">
             <Minimize2 size={24} />
           </button>
-          <div className="text-xs font-bold uppercase tracking-widest text-white/50">Now Playing</div>
+          <div className="text-xs font-bold uppercase tracking-widest text-white/50">
+            {isSyncStudioMode ? 'Sync Studio' : 'Now Playing'}
+          </div>
           <div className="w-10"></div>
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center">
-          {!isLyricsMode ? (
+          {!isLyricsMode && !isSyncStudioMode ? (
             <div className="w-full max-w-sm aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-[#ff9500]/20 mb-10 border border-white/10 transition-all">
               <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
             </div>
@@ -249,7 +320,44 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
                 </div>
               )}
             </div>
-          )}
+          ) : isSyncStudioMode ? (
+            <div className="w-full max-w-sm flex-1 mb-10 border border-[#ff9500]/30 bg-black/60 backdrop-blur-3xl p-6 rounded-2xl relative flex flex-col items-center shadow-[0_0_50px_rgba(255,149,0,0.2)]">
+              <div className="w-full flex-1 overflow-y-auto hide-scrollbar pb-10" ref={lyricsContainerRef}>
+                {syncLines.map((line, idx) => {
+                  const isCurrent = idx === currentSyncIdx;
+                  const isDone = idx < currentSyncIdx;
+                  
+                  // Auto scroll during sync
+                  if (isCurrent && lyricsContainerRef.current) {
+                    const el = lyricsContainerRef.current.querySelector(`[data-sync-idx="${idx}"]`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                  
+                  return (
+                    <p 
+                      key={idx} 
+                      data-sync-idx={idx}
+                      className={`text-2xl font-bold leading-relaxed tracking-wide mb-6 transition-all duration-300 text-center ${
+                        isCurrent ? 'text-[#ff9500] scale-110' : isDone ? 'text-white/40' : 'text-white/80'
+                      }`}
+                    >
+                      {line}
+                    </p>
+                  );
+                })}
+              </div>
+              
+              <div className="w-full mt-4">
+                <button 
+                  onClick={handleSyncTap}
+                  disabled={savingSync}
+                  className="w-full py-6 rounded-2xl bg-[#ff9500] text-black font-black text-xl tracking-widest uppercase active:scale-95 transition-transform flex items-center justify-center gap-2"
+                >
+                  {savingSync ? 'Saving...' : 'Tap to Sync Line'} <CheckCircle2 />
+                </button>
+              </div>
+            </div>
+          ) : null}
           
           <div className="w-full max-w-sm px-4">
             <div className="flex justify-between items-end mb-6">
@@ -280,14 +388,32 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
               <button onClick={(e) => { e.stopPropagation(); onNext(); }} className="p-4 text-white hover:text-[#ff9500] transition-colors active:scale-95"><SkipForward size={36} fill="currentColor" /></button>
             </div>
             
-            {/* Secondary Controls (Lyrics) */}
+            {/* Secondary Controls (Lyrics & Studio) */}
             <div className="flex justify-between items-center px-6 mt-6">
               <button 
-                onClick={(e) => { e.stopPropagation(); setIsLyricsMode(!isLyricsMode); }} 
+                onClick={(e) => { e.stopPropagation(); setIsLyricsMode(!isLyricsMode); setIsSyncStudioMode(false); }} 
                 className={`p-3 rounded-xl transition-all active:scale-95 ${isLyricsMode ? 'bg-white/20 text-white' : 'text-white/50 hover:bg-white/10 hover:text-white'}`}
               >
                 <AlignLeft size={24} />
               </button>
+              
+              {isLyricsMode && track.lyrics && track.userId === currentUserId && !isSyncStudioMode && (
+                <button 
+                  onClick={startSyncStudio}
+                  className="p-3 rounded-xl text-[#ff9500] hover:bg-[#ff9500]/20 transition-all active:scale-95 flex items-center gap-2 text-sm font-bold tracking-wider uppercase"
+                >
+                  <Wand2 size={20} /> Sync
+                </button>
+              )}
+              
+              {isSyncStudioMode && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setIsSyncStudioMode(false); }}
+                  className="p-3 rounded-xl text-red-500 hover:bg-red-500/20 transition-all active:scale-95 text-sm font-bold uppercase"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
           </div>
         </div>
