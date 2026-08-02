@@ -150,8 +150,16 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
             <div className="w-full max-w-sm aspect-square rounded-2xl overflow-y-auto mb-10 border border-white/10 bg-black/40 backdrop-blur-3xl p-6 hide-scrollbar relative transition-all">
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 pointer-events-none z-10" />
               {track.lyrics ? (
-                <div className="text-2xl font-bold text-white/90 leading-relaxed tracking-wide pb-16 whitespace-pre-wrap">
-                  {track.lyrics}
+                <div className="w-full pb-16">
+                  {track.lyrics.split('\n').map((line, idx) => (
+                    <p 
+                      key={idx} 
+                      className="text-2xl font-bold text-white/90 leading-relaxed tracking-wide mb-4 animate-in slide-in-from-bottom-4 fade-in duration-700 fill-mode-both"
+                      style={{ animationDelay: `${Math.min(idx * 50, 1500)}ms` }}
+                    >
+                      {line || '\u00A0'}
+                    </p>
+                  ))}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-white/40 text-center px-4">
