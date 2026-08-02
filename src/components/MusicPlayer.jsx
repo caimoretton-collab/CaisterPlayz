@@ -150,6 +150,10 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
       await pb.collection('cplayz_tracks').update(track.id, { lyrics: newLyrics });
       track.lyrics = newLyrics; // update local instantly
       
+      // Instantly apply the parsed version so it works without reloading
+      const parsed = syncLines.map((text, i) => ({ time: finalTimestamps[i], text }));
+      setParsedLyrics(parsed);
+      
       alert('Lyrics synced successfully!');
       setIsSyncStudioMode(false);
     } catch (e) {
@@ -257,7 +261,7 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
         <audio ref={audioRef} onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoadedMetadata} onEnded={onNext} />
         
         <div className="flex justify-between items-center mb-8 pt-4">
-          <button onClick={() => setIsExpanded(false)} className="p-2 text-white/70 hover:text-white">
+          <button onClick={() => { setIsExpanded(false); setIsSyncStudioMode(false); }} className="p-2 text-white/70 hover:text-white">
             <Minimize2 size={24} />
           </button>
           <div className="text-xs font-bold uppercase tracking-widest text-white/50">
