@@ -8,8 +8,6 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
   const [duration, setDuration] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLyricsMode, setIsLyricsMode] = useState(false);
-  const [fetchedLyrics, setFetchedLyrics] = useState(null);
-  const [fetchingLyrics, setFetchingLyrics] = useState(false);
   const audioRef = useRef(null);
   const [hasLoggedPlay, setHasLoggedPlay] = useState(false);
   
@@ -48,39 +46,6 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
       setIsLiked(res.length > 0);
     } catch (e) {
       console.error('Error checking like status', e);
-    }
-  };
-
-  useEffect(() => {
-    if (isLyricsMode && !fetchedLyrics && !fetchingLyrics && track) {
-      if (track.lyrics) {
-        setFetchedLyrics(track.lyrics);
-      } else {
-        fetchLyrics();
-      }
-    }
-  }, [isLyricsMode, track]);
-
-  const fetchLyrics = async () => {
-    setFetchingLyrics(true);
-    try {
-      // Use lrclib api to fetch lyrics automatically
-      const res = await fetch(`https://lrclib.net/api/search?track_name=${encodeURIComponent(track.title)}&artist_name=${encodeURIComponent(track.artist)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.length > 0) {
-          setFetchedLyrics(data[0].syncedLyrics || data[0].plainLyrics || 'No lyrics found for this track.');
-        } else {
-          setFetchedLyrics('No lyrics found for this track.');
-        }
-      } else {
-        setFetchedLyrics('Failed to load lyrics.');
-      }
-    } catch (e) {
-      console.error(e);
-      setFetchedLyrics('Failed to load lyrics.');
-    } finally {
-      setFetchingLyrics(false);
     }
   };
 
@@ -181,19 +146,15 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
           ) : (
             <div className="w-full max-w-sm aspect-square rounded-2xl overflow-y-auto mb-10 border border-white/10 bg-black/40 backdrop-blur-3xl p-6 hide-scrollbar relative transition-all">
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 pointer-events-none z-10" />
-              {fetchingLyrics ? (
-                <div className="flex flex-col items-center justify-center h-full text-white/40">
-                  <p className="font-bold animate-pulse">Searching for lyrics...</p>
-                </div>
-              ) : fetchedLyrics && fetchedLyrics !== 'No lyrics found for this track.' && fetchedLyrics !== 'Failed to load lyrics.' ? (
+              {track.lyrics ? (
                 <div className="text-2xl font-bold text-white/90 leading-relaxed tracking-wide pb-16 whitespace-pre-wrap">
-                  {fetchedLyrics}
+                  {track.lyrics}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-white/40 text-center px-4">
                   <AlignLeft size={48} className="mb-4 opacity-50" />
-                  <p className="font-bold text-lg mb-2">{fetchedLyrics || 'No lyrics provided.'}</p>
-                  <p className="text-xs opacity-50 font-normal">We couldn't automatically find lyrics for "{track.title}" by {track.artist}.</p>
+                  <p className="font-bold text-lg mb-2">No lyrics provided.</p>
+                  <p className="text-xs opacity-50 font-normal">Lyrics were not added when this track was uploaded.</p>
                 </div>
               )}
             </div>
