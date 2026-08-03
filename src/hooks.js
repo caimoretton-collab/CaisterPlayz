@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import pb from './pocketbase';
+import { notifyDiscordWebhook } from './utils';
 
 /* ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
    DEVICE / GUEST AUTH
@@ -1089,6 +1090,13 @@ export async function toggleFollow(followerId, followingId, isCurrentlyFollowing
     const sender = pb.authStore.model;
     const senderName = sender ? (sender.displayName || sender.username || 'Someone') : 'Someone';
     sendSignalAlert(followingId, followerId, 'connect', followingId, senderName);
+    
+    // Discord Webhook Notification
+    try {
+      const followedUser = await pb.collection('users').getOne(followingId);
+      notifyDiscordWebhook(`**${senderName}** just followed **${followedUser.displayName || 'someone'}**!`);
+    } catch (e) {}
+
     return true;
   }
 }

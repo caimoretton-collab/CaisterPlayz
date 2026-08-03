@@ -261,3 +261,15 @@ export function formatNumber(num) {
   if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'k';
   return n.toString();
 }
+
+export function notifyDiscordWebhook(message) {
+  const url = "https://discord.com/api/webhooks/1533209931489214484/JdHMwQPeuKCpl23irIsl3Tg30b9C1s9Bu4kPl1gU-h4MBoTviWNhG_-vtUXgIcYapZuo";
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      content: message,
+      username: 'CaisterPlayz Activity',
+    })
+  }).catch(() => {});
+}

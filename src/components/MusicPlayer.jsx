@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Maximize2, Minimize2, Heart, MessageCircle, AlignLeft, Wand2, CheckCircle2 } from 'lucide-react';
 import pb from '../pocketbase';
+import { notifyDiscordWebhook } from '../utils';
 
 export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -25,10 +26,6 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
       }
     }
   }, [track]);
-
-
-
-
 
   const checkIfLiked = async () => {
     if (!track || !currentUserId) return;
@@ -107,6 +104,10 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
         setIsLiked(true);
         setLikes(prev => prev + 1);
         await pb.collection('cplayz_tracks').update(track.id, { likes: likes + 1 });
+        
+        // Discord Webhook Notification
+        const senderName = pb.authStore.model?.displayName || pb.authStore.model?.username || 'Someone';
+        notifyDiscordWebhook(`**${senderName}** just liked the track **${track.title}** by **${track.artist}**!`);
       }
     } catch (e) {
       console.error('Error toggling like', e);
