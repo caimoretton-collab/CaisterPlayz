@@ -7,19 +7,8 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isLyricsMode, setIsLyricsMode] = useState(false);
   const audioRef = useRef(null);
-  const lyricsContainerRef = useRef(null);
   const [hasLoggedPlay, setHasLoggedPlay] = useState(false);
-  const [parsedLyrics, setParsedLyrics] = useState(null);
-  const [activeLineIdx, setActiveLineIdx] = useState(-1);
-  
-  // Sync Studio State
-  const [isSyncStudioMode, setIsSyncStudioMode] = useState(false);
-  const [syncLines, setSyncLines] = useState([]);
-  const [currentSyncIdx, setCurrentSyncIdx] = useState(0);
-  const [syncedTimestamps, setSyncedTimestamps] = useState([]);
-  const [savingSync, setSavingSync] = useState(false);
   
   // Engagement
   const [likes, setLikes] = useState(track?.likes || 0);
@@ -39,165 +28,7 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
 
 
 
-  const parseLrcText = (lrcString) => {
-    if (!lrcString) return null;
-    const lrcRegex = /\[\d{2}:\d{2}\.\d{2,3}\]/;
-    if (lrcRegex.test(lrcString)) {
-      const lines = lrcString.split('\n');
-      const parsed = [];
-      lines.forEach(line => {
-        const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/);
-        if (match) {
-          const minutes = parseInt(match[1], 10);
-          const seconds = parseInt(match[2], 10);
-          const milliseconds = parseInt(match[3], 10);
-          const time = minutes * 60 + seconds + (milliseconds / (match[3].length === 3 ? 1000 : 100));
-          const text = match[4].trim();
-          if (text) {
-            parsed.push({ time, text });
-          }
-        }
-      });
-      return parsed.length > 0 ? parsed : null;
-    }
-    return null;
-  };
 
-  useEffect(() => {
-    let active = true;
-    
-    const loadLyrics = async () => {
-      if (!track) {
-        setParsedLyrics(null);
-        return;
-      }
-      
-      if (track.lyrics) {
-        setParsedLyrics(parseLrcText(track.lyrics));
-        return;
-      }
-      
-      // If no lyrics, attempt to auto-fetch from LRCLIB
-      try {
-        const query = new URLSearchParams({ track_name: track.title, artist_name: track.artist });
-        const res = await fetch(`https://lrclib.net/api/get?${query}`);
-        if (!res.ok) throw new Error('Not found');
-        
-        const data = await res.json();
-        if (data.syncedLyrics && active) {
-          setParsedLyrics(parseLrcText(data.syncedLyrics));
-          
-          // Optionally save it back to the database if we own the track
-          if (track.userId === currentUserId) {
-            try {
-              await pb.collection('cplayz_tracks').update(track.id, { lyrics: data.syncedLyrics });
-              track.lyrics = data.syncedLyrics; // Update local reference
-            } catch (e) {
-              console.error("Failed to save auto-fetched lyrics", e);
-            }
-          }
-        } else {
-          if (active) setParsedLyrics(null);
-        }
-      } catch (e) {
-        console.log("No auto-lyrics found for this track on LRCLIB.");
-        if (active) setParsedLyrics(null);
-      }
-    };
-
-    loadLyrics();
-    
-    return () => { active = false; };
-  }, [track, currentUserId]);
-
-  useEffect(() => {
-    if (parsedLyrics) {
-      let currentIdx = -1;
-      for (let i = 0; i < parsedLyrics.length; i++) {
-        if (progress >= parsedLyrics[i].time) {
-          currentIdx = i;
-        } else {
-          break;
-        }
-      }
-      setActiveLineIdx(currentIdx);
-    }
-  }, [progress, parsedLyrics]);
-
-  useEffect(() => {
-    if (isLyricsMode && activeLineIdx >= 0 && lyricsContainerRef.current) {
-      const activeElement = lyricsContainerRef.current.querySelector(`[data-idx="${activeLineIdx}"]`);
-      if (activeElement) {
-        activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-  }, [activeLineIdx, isLyricsMode]);
-
-  const startSyncStudio = (e) => {
-    e.stopPropagation();
-    if (!track.lyrics) return;
-    
-    // Strip any existing timestamps to get pure text
-    const cleanLines = track.lyrics.split('\n').map(line => line.replace(/\[\d{2}:\d{2}\.\d{2,3}\]/g, '').trim()).filter(line => line);
-    setSyncLines(cleanLines);
-    setCurrentSyncIdx(0);
-    setSyncedTimestamps([]);
-    setIsSyncStudioMode(true);
-    
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      setProgress(0);
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
-    }
-  };
-
-  const handleSyncTap = (e) => {
-    e.stopPropagation();
-    if (audioRef.current && currentSyncIdx < syncLines.length) {
-      const time = audioRef.current.currentTime;
-      setSyncedTimestamps(prev => [...prev, time]);
-      
-      const nextIdx = currentSyncIdx + 1;
-      setCurrentSyncIdx(nextIdx);
-      
-      if (nextIdx >= syncLines.length) {
-        finishSyncStudio([...syncedTimestamps, time]);
-      }
-    }
-  };
-
-  const formatLrcTime = (timeSeconds) => {
-    const minutes = Math.floor(timeSeconds / 60);
-    const seconds = Math.floor(timeSeconds % 60);
-    const milliseconds = Math.floor((timeSeconds % 1) * 100);
-    return `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}]`;
-  };
-
-  const finishSyncStudio = async (finalTimestamps) => {
-    setSavingSync(true);
-    try {
-      const lrcLines = syncLines.map((line, i) => {
-        const t = finalTimestamps[i];
-        return `${formatLrcTime(t)} ${line}`;
-      });
-      const newLyrics = lrcLines.join('\n');
-      
-      await pb.collection('cplayz_tracks').update(track.id, { lyrics: newLyrics });
-      track.lyrics = newLyrics; // update local instantly
-      
-      // Instantly apply the parsed version so it works without reloading
-      const parsed = syncLines.map((text, i) => ({ time: finalTimestamps[i], text }));
-      setParsedLyrics(parsed);
-      
-      alert('Lyrics synced successfully!');
-      setIsSyncStudioMode(false);
-    } catch (e) {
-      console.error('Error saving synced lyrics', e);
-      alert('Failed to save synced lyrics.');
-    } finally {
-      setSavingSync(false);
-    }
-  };
 
   const checkIfLiked = async () => {
     if (!track || !currentUserId) return;
@@ -316,99 +147,14 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
         >
           <div className="absolute inset-0 bg-black/60 backdrop-blur-[80px]" />
           
-          <div className="relative z-10 w-full flex justify-center pt-2 pb-6 cursor-pointer" onClick={() => { setIsExpanded(false); setIsSyncStudioMode(false); }}>
+          <div className="relative z-10 w-full flex justify-center pt-2 pb-6 cursor-pointer" onClick={() => setIsExpanded(false)}>
             <div className="w-12 h-1.5 bg-white/30 rounded-full"></div>
           </div>
 
           <div className="relative z-10 flex-1 flex flex-col items-center justify-center min-h-0 w-full max-w-md mx-auto">
-            {!isLyricsMode && !isSyncStudioMode ? (
-              <div className={`w-full aspect-square rounded-xl overflow-hidden shadow-2xl shadow-black/50 mb-10 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] shrink-0 ${isPlaying ? 'scale-100' : 'scale-[0.85]'}`}>
-                <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
-              </div>
-            ) : isSyncStudioMode ? (
-              <div className="w-full flex-1 mb-10 border border-[#ff9500]/30 bg-black/40 backdrop-blur-3xl p-6 rounded-2xl relative flex flex-col items-center shadow-[0_0_50px_rgba(255,149,0,0.2)]">
-                <div className="w-full flex-1 overflow-y-auto hide-scrollbar pb-[40vh] pt-[20vh] mask-image-fade" ref={lyricsContainerRef} style={{ WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 10%, black 90%, transparent)' }}>
-                  {syncLines.map((line, idx) => {
-                    const isCurrent = idx === currentSyncIdx;
-                    const isDone = idx < currentSyncIdx;
-                    
-                    if (isCurrent && lyricsContainerRef.current) {
-                      const el = lyricsContainerRef.current.querySelector(`[data-sync-idx="${idx}"]`);
-                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                    
-                    return (
-                      <p 
-                        key={idx} 
-                        data-sync-idx={idx}
-                        className={`text-[28px] font-black leading-tight tracking-tight mb-8 transition-all duration-300 text-center ${
-                          isCurrent ? 'text-white scale-105 opacity-100' : isDone ? 'text-white/30 blur-[1px]' : 'text-white/50 blur-[1px]'
-                        }`}
-                      >
-                        {line}
-                      </p>
-                    );
-                  })}
-                </div>
-                
-                <div className="w-full mt-4 pb-4">
-                  <button 
-                    onClick={handleSyncTap}
-                    disabled={savingSync}
-                    className="w-full py-6 rounded-2xl bg-white text-black font-black text-xl tracking-widest uppercase active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-[0_10px_30px_rgba(255,255,255,0.2)]"
-                  >
-                    {savingSync ? 'Saving...' : 'Tap to Sync Line'} <CheckCircle2 />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="w-full flex-1 overflow-y-auto mb-10 hide-scrollbar relative transition-all mask-image-fade" style={{ WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 10%, black 90%, transparent)' }}>
-                {parsedLyrics ? (
-                  <div className="w-full pb-[60vh] pt-[30vh]" ref={lyricsContainerRef}>
-                    {parsedLyrics.map((line, idx) => {
-                      const isActive = idx === activeLineIdx;
-                      return (
-                        <p 
-                          key={idx} 
-                          data-idx={idx}
-                          className={`text-[32px] font-black leading-tight tracking-tight mb-8 transition-all duration-700 ease-out cursor-pointer ${
-                            isActive 
-                              ? 'text-white scale-100 origin-left blur-none opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]' 
-                              : 'text-white scale-[0.9] origin-left blur-[3px] opacity-40 hover:opacity-70 hover:blur-none'
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (audioRef.current) {
-                              audioRef.current.currentTime = line.time;
-                              setProgress(line.time);
-                            }
-                          }}
-                        >
-                          {line.text}
-                        </p>
-                      );
-                    })}
-                  </div>
-                ) : track.lyrics ? (
-                  <div className="w-full pb-[20vh] pt-[10vh]">
-                    {track.lyrics.split('\n').map((line, idx) => (
-                      <p 
-                        key={idx} 
-                        className="text-[32px] font-black text-white/90 leading-tight tracking-tight mb-8 animate-in slide-in-from-bottom-8 fade-in duration-1000 fill-mode-both"
-                        style={{ animationDelay: `${Math.min(idx * 50, 1500)}ms` }}
-                      >
-                        {line || '\u00A0'}
-                      </p>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-white/40 text-center px-4">
-                    <MessageCircle size={48} className="mb-4 opacity-50" />
-                    <p className="font-bold text-lg mb-2">No lyrics found.</p>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className={`w-full aspect-square rounded-xl overflow-hidden shadow-2xl shadow-black/50 mb-10 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] shrink-0 ${isPlaying ? 'scale-100' : 'scale-[0.85]'}`}>
+              <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
+            </div>
             
             <div className="w-full shrink-0">
               <div className="flex justify-between items-center mb-6 px-4">
@@ -451,22 +197,6 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
                 </div>
                 
                 <div className="flex justify-between items-center px-8 border-t border-white/10 pt-6">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setIsLyricsMode(!isLyricsMode); setIsSyncStudioMode(false); }} 
-                    className={`p-2 transition-all active:scale-90 ${isLyricsMode ? 'text-white' : 'text-white/50 hover:text-white'}`}
-                  >
-                    <MessageCircle size={22} fill={isLyricsMode ? "currentColor" : "none"} />
-                  </button>
-                  
-                  {track.lyrics && track.userId === currentUserId && !isSyncStudioMode && (
-                    <button 
-                      onClick={startSyncStudio}
-                      className="p-2 transition-all active:scale-90 text-white/50 hover:text-white"
-                    >
-                      <Wand2 size={22} />
-                    </button>
-                  )}
-                  
                   <button className="p-2 transition-all active:scale-90 text-white/50 hover:text-white">
                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 0 0-7.07 17.07l.71-.7a9 9 0 0 1 12.72 0l.7-.7A10 10 0 0 0 12 2z"></path><path d="M12 6a6 6 0 0 0-4.24 10.24l.71-.7a5 5 0 0 1 7.06 0l.71-.7A6 6 0 0 0 12 6z"></path><path d="M12 10a2 2 0 0 0-1.41 3.41l.7.71a1 1 0 0 1 1.42 0l.7-.71A2 2 0 0 0 12 10z"></path><polygon points="12 22 17 14 7 14 12 22"></polygon></svg>
                   </button>

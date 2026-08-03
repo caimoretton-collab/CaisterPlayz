@@ -7,7 +7,7 @@ export default function UploadView({ currentUserId, onUploadSuccess }) {
   const [artist, setArtist] = useState('');
   const [audioFile, setAudioFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
-  const [lyrics, setLyrics] = useState('');
+
   const [uploading, setUploading] = useState(false);
 
   const handleUpload = async (e) => {
@@ -26,9 +26,7 @@ export default function UploadView({ currentUserId, onUploadSuccess }) {
       if (coverFile) {
         formData.append('coverArt', coverFile);
       }
-      if (lyrics) {
-        formData.append('lyrics', lyrics);
-      }
+
       formData.append('userId', currentUserId);
       formData.append('plays', 0);
       formData.append('likes', 0);
@@ -37,7 +35,7 @@ export default function UploadView({ currentUserId, onUploadSuccess }) {
       alert('Track uploaded successfully!');
       setTitle('');
       setArtist('');
-      setLyrics('');
+
       setAudioFile(null);
       setCoverFile(null);
       if (onUploadSuccess) onUploadSuccess();
@@ -115,16 +113,6 @@ export default function UploadView({ currentUserId, onUploadSuccess }) {
           </label>
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-white/50 mb-1 uppercase tracking-wider">Lyrics (Optional)</label>
-          <textarea 
-            value={lyrics}
-            onChange={e => setLyrics(e.target.value)}
-            className="w-full bg-[#0c0c0c] border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#ff9500] transition-colors min-h-[120px] resize-y"
-            placeholder="Paste your lyrics here (leave blank for automatic)"
-            disabled={uploading}
-          />
-        </div>
 
         <button 
           type="submit" 
