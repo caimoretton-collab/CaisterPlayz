@@ -39,33 +39,76 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
 
 
 
+  const parseLrcText = (lrcString) => {
+    if (!lrcString) return null;
+    const lrcRegex = /\[\d{2}:\d{2}\.\d{2,3}\]/;
+    if (lrcRegex.test(lrcString)) {
+      const lines = lrcString.split('\n');
+      const parsed = [];
+      lines.forEach(line => {
+        const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/);
+        if (match) {
+          const minutes = parseInt(match[1], 10);
+          const seconds = parseInt(match[2], 10);
+          const milliseconds = parseInt(match[3], 10);
+          const time = minutes * 60 + seconds + (milliseconds / (match[3].length === 3 ? 1000 : 100));
+          const text = match[4].trim();
+          if (text) {
+            parsed.push({ time, text });
+          }
+        }
+      });
+      return parsed.length > 0 ? parsed : null;
+    }
+    return null;
+  };
+
   useEffect(() => {
-    if (track && track.lyrics) {
-      const lrcRegex = /\[\d{2}:\d{2}\.\d{2,3}\]/;
-      if (lrcRegex.test(track.lyrics)) {
-        const lines = track.lyrics.split('\n');
-        const parsed = [];
-        lines.forEach(line => {
-          const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/);
-          if (match) {
-            const minutes = parseInt(match[1], 10);
-            const seconds = parseInt(match[2], 10);
-            const milliseconds = parseInt(match[3], 10);
-            const time = minutes * 60 + seconds + (milliseconds / (match[3].length === 3 ? 1000 : 100));
-            const text = match[4].trim();
-            if (text) {
-              parsed.push({ time, text });
+    let active = true;
+    
+    const loadLyrics = async () => {
+      if (!track) {
+        setParsedLyrics(null);
+        return;
+      }
+      
+      if (track.lyrics) {
+        setParsedLyrics(parseLrcText(track.lyrics));
+        return;
+      }
+      
+      // If no lyrics, attempt to auto-fetch from LRCLIB
+      try {
+        const query = new URLSearchParams({ track_name: track.title, artist_name: track.artist });
+        const res = await fetch(`https://lrclib.net/api/get?${query}`);
+        if (!res.ok) throw new Error('Not found');
+        
+        const data = await res.json();
+        if (data.syncedLyrics && active) {
+          setParsedLyrics(parseLrcText(data.syncedLyrics));
+          
+          // Optionally save it back to the database if we own the track
+          if (track.userId === currentUserId) {
+            try {
+              await pb.collection('cplayz_tracks').update(track.id, { lyrics: data.syncedLyrics });
+              track.lyrics = data.syncedLyrics; // Update local reference
+            } catch (e) {
+              console.error("Failed to save auto-fetched lyrics", e);
             }
           }
-        });
-        setParsedLyrics(parsed.length > 0 ? parsed : null);
-      } else {
-        setParsedLyrics(null);
+        } else {
+          if (active) setParsedLyrics(null);
+        }
+      } catch (e) {
+        console.log("No auto-lyrics found for this track on LRCLIB.");
+        if (active) setParsedLyrics(null);
       }
-    } else {
-      setParsedLyrics(null);
-    }
-  }, [track]);
+    };
+
+    loadLyrics();
+    
+    return () => { active = false; };
+  }, [track, currentUserId]);
 
   useEffect(() => {
     if (parsedLyrics) {
