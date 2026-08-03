@@ -314,21 +314,15 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
           className="fixed inset-0 z-50 flex flex-col p-6 pb-12 animate-in slide-in-from-bottom-full duration-300 bg-cover bg-center overflow-hidden"
           style={{ backgroundImage: `url(${coverUrl})` }}
         >
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-[60px]" />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-[80px]" />
           
-          <div className="relative z-10 flex justify-between items-center mb-6 pt-4">
-            <button onClick={() => { setIsExpanded(false); setIsSyncStudioMode(false); }} className="p-2 text-white/70 hover:text-white">
-              <Minimize2 size={24} />
-            </button>
-            <div className="text-xs font-bold uppercase tracking-widest text-white/50">
-              {isSyncStudioMode ? 'Sync Studio' : 'Now Playing'}
-            </div>
-            <div className="w-10"></div>
+          <div className="relative z-10 w-full flex justify-center pt-2 pb-6 cursor-pointer" onClick={() => { setIsExpanded(false); setIsSyncStudioMode(false); }}>
+            <div className="w-12 h-1.5 bg-white/30 rounded-full"></div>
           </div>
 
           <div className="relative z-10 flex-1 flex flex-col items-center justify-center min-h-0 w-full max-w-md mx-auto">
             {!isLyricsMode && !isSyncStudioMode ? (
-              <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-black/50 mb-10 border border-white/10 transition-all shrink-0">
+              <div className={`w-full aspect-square rounded-xl overflow-hidden shadow-2xl shadow-black/50 mb-10 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] shrink-0 ${isPlaying ? 'scale-100' : 'scale-[0.85]'}`}>
                 <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
               </div>
             ) : isSyncStudioMode ? (
@@ -348,7 +342,7 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
                         key={idx} 
                         data-sync-idx={idx}
                         className={`text-[28px] font-black leading-tight tracking-tight mb-8 transition-all duration-300 text-center ${
-                          isCurrent ? 'text-[#ff9500] scale-105 opacity-100' : isDone ? 'text-white/30 blur-[1px]' : 'text-white/60 blur-[1px]'
+                          isCurrent ? 'text-white scale-105 opacity-100' : isDone ? 'text-white/30 blur-[1px]' : 'text-white/50 blur-[1px]'
                         }`}
                       >
                         {line}
@@ -361,7 +355,7 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
                   <button 
                     onClick={handleSyncTap}
                     disabled={savingSync}
-                    className="w-full py-6 rounded-2xl bg-[#ff9500] text-black font-black text-xl tracking-widest uppercase active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-[0_10px_30px_rgba(255,149,0,0.4)]"
+                    className="w-full py-6 rounded-2xl bg-white text-black font-black text-xl tracking-widest uppercase active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-[0_10px_30px_rgba(255,255,255,0.2)]"
                   >
                     {savingSync ? 'Saving...' : 'Tap to Sync Line'} <CheckCircle2 />
                   </button>
@@ -377,10 +371,10 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
                         <p 
                           key={idx} 
                           data-idx={idx}
-                          className={`text-[28px] font-black leading-tight tracking-tight mb-8 transition-all duration-700 ease-out cursor-pointer ${
+                          className={`text-[32px] font-black leading-tight tracking-tight mb-8 transition-all duration-700 ease-out cursor-pointer ${
                             isActive 
-                              ? 'text-white scale-100 origin-left blur-none opacity-100' 
-                              : 'text-white scale-95 origin-left blur-[2px] opacity-40 hover:opacity-70 hover:blur-none'
+                              ? 'text-white scale-100 origin-left blur-none opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]' 
+                              : 'text-white scale-[0.9] origin-left blur-[3px] opacity-40 hover:opacity-70 hover:blur-none'
                           }`}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -400,7 +394,7 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
                     {track.lyrics.split('\n').map((line, idx) => (
                       <p 
                         key={idx} 
-                        className="text-[28px] font-black text-white/90 leading-tight tracking-tight mb-8 animate-in slide-in-from-bottom-8 fade-in duration-1000 fill-mode-both"
+                        className="text-[32px] font-black text-white/90 leading-tight tracking-tight mb-8 animate-in slide-in-from-bottom-8 fade-in duration-1000 fill-mode-both"
                         style={{ animationDelay: `${Math.min(idx * 50, 1500)}ms` }}
                       >
                         {line || '\u00A0'}
@@ -409,69 +403,78 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-white/40 text-center px-4">
-                    <AlignLeft size={48} className="mb-4 opacity-50" />
-                    <p className="font-bold text-lg mb-2">No lyrics provided.</p>
-                    <p className="text-xs opacity-50 font-normal">Lyrics were not added when this track was uploaded.</p>
+                    <MessageCircle size={48} className="mb-4 opacity-50" />
+                    <p className="font-bold text-lg mb-2">No lyrics found.</p>
                   </div>
                 )}
               </div>
             )}
             
             <div className="w-full shrink-0">
-              <div className="flex justify-between items-end mb-6 px-4">
+              <div className="flex justify-between items-center mb-6 px-4">
                 <div className="min-w-0 pr-4">
-                  <h2 className="text-[22px] font-black text-white truncate">{track.title}</h2>
-                  <p className="text-[17px] text-white/70 font-medium truncate mt-1">{track.artist}</p>
+                  <h2 className="text-2xl font-bold text-white truncate drop-shadow-md">{track.title}</h2>
+                  <p className="text-lg text-white/70 font-medium truncate mt-0.5 drop-shadow-sm">{track.artist}</p>
                 </div>
-                <button onClick={toggleLike} className={`p-2 transition-transform active:scale-90 shrink-0 ${isLiked ? 'text-[#ff9500]' : 'text-white hover:text-[#ff9500]'}`}>
-                  <Heart size={28} fill={isLiked ? "currentColor" : "none"} strokeWidth={isLiked ? 0 : 2} />
+                <button onClick={toggleLike} className={`p-2 rounded-full bg-white/10 backdrop-blur-md transition-transform active:scale-90 shrink-0 ${isLiked ? 'text-[#ff3b30]' : 'text-white hover:bg-white/20'}`}>
+                  <Heart size={24} fill={isLiked ? "currentColor" : "none"} strokeWidth={isLiked ? 0 : 2} />
                 </button>
               </div>
 
               <div className="mb-8">
-                <div className="h-2 w-full bg-white/20 rounded-full overflow-hidden cursor-pointer" onClick={seek}>
-                  <div className="h-full bg-gradient-to-r from-[#ff9500] to-[#ff3b30]" style={{ width: `${(progress / duration) * 100}%` }}></div>
+                <div className="h-1.5 w-full bg-white/20 rounded-full overflow-hidden cursor-pointer" onClick={seek}>
+                  <div className="h-full bg-white rounded-full transition-all duration-100 ease-linear" style={{ width: `${(progress / duration) * 100}%` }}></div>
                 </div>
-                <div className="flex justify-between text-xs text-white/50 mt-2 font-mono">
+                <div className="flex justify-between text-xs text-white/60 mt-2 font-medium">
                   <span>{formatTime(progress)}</span>
+                  <span className="font-bold uppercase tracking-widest text-[9px] opacity-40">CP</span>
                   <span>{formatTime(duration)}</span>
                 </div>
               </div>
 
-              <div className="flex justify-between items-center px-4">
-                <button onClick={(e) => { e.stopPropagation(); onPrev(); }} className="p-4 text-white hover:text-[#ff9500] transition-colors active:scale-95"><SkipBack size={36} fill="currentColor" /></button>
-                <button onClick={togglePlay} className="w-20 h-20 flex items-center justify-center rounded-full bg-white text-black hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-white/10">
-                  {isPlaying ? <Pause size={36} fill="currentColor" /> : <Play size={36} fill="currentColor" className="ml-2" />}
+              <div className="flex justify-center items-center gap-10 mb-8">
+                <button onClick={(e) => { e.stopPropagation(); onPrev(); }} className="text-white hover:text-white/80 transition-colors active:scale-90"><SkipBack size={40} fill="currentColor" /></button>
+                <button onClick={togglePlay} className="w-[84px] h-[84px] flex items-center justify-center rounded-full bg-transparent hover:bg-white/10 active:bg-white/20 transition-colors">
+                  {isPlaying ? <Pause size={52} fill="currentColor" /> : <Play size={52} fill="currentColor" className="ml-2" />}
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onNext(); }} className="p-4 text-white hover:text-[#ff9500] transition-colors active:scale-95"><SkipForward size={36} fill="currentColor" /></button>
+                <button onClick={(e) => { e.stopPropagation(); onNext(); }} className="text-white hover:text-white/80 transition-colors active:scale-90"><SkipForward size={40} fill="currentColor" /></button>
               </div>
               
-              {/* Secondary Controls (Lyrics & Studio) */}
-              <div className="flex justify-between items-center px-6 mt-6">
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setIsLyricsMode(!isLyricsMode); setIsSyncStudioMode(false); }} 
-                  className={`p-3 rounded-xl transition-all active:scale-95 ${isLyricsMode ? 'bg-white/20 text-white' : 'text-white/50 hover:bg-white/10 hover:text-white'}`}
-                >
-                  <AlignLeft size={24} />
-                </button>
+              {/* Secondary Controls (Volume & Footer Icons) */}
+              <div className="w-full">
+                <div className="flex items-center gap-3 px-4 mb-6 opacity-60">
+                  <span className="text-[10px]">🔈</span>
+                  <div className="h-1 w-full bg-white/20 rounded-full overflow-hidden">
+                     <div className="h-full bg-white rounded-full w-[75%]"></div>
+                  </div>
+                  <span className="text-[12px]">🔊</span>
+                </div>
                 
-                {isLyricsMode && track.lyrics && track.userId === currentUserId && !isSyncStudioMode && (
+                <div className="flex justify-between items-center px-8 border-t border-white/10 pt-6">
                   <button 
-                    onClick={startSyncStudio}
-                    className="p-3 rounded-xl text-[#ff9500] hover:bg-[#ff9500]/20 transition-all active:scale-95 flex items-center gap-2 text-sm font-bold tracking-wider uppercase"
+                    onClick={(e) => { e.stopPropagation(); setIsLyricsMode(!isLyricsMode); setIsSyncStudioMode(false); }} 
+                    className={`p-2 transition-all active:scale-90 ${isLyricsMode ? 'text-white' : 'text-white/50 hover:text-white'}`}
                   >
-                    <Wand2 size={20} /> Sync
+                    <MessageCircle size={22} fill={isLyricsMode ? "currentColor" : "none"} />
                   </button>
-                )}
-                
-                {isSyncStudioMode && (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setIsSyncStudioMode(false); }}
-                    className="p-3 rounded-xl text-red-500 hover:bg-red-500/20 transition-all active:scale-95 text-sm font-bold uppercase"
-                  >
-                    Cancel
+                  
+                  {track.lyrics && track.userId === currentUserId && !isSyncStudioMode && (
+                    <button 
+                      onClick={startSyncStudio}
+                      className="p-2 transition-all active:scale-90 text-white/50 hover:text-white"
+                    >
+                      <Wand2 size={22} />
+                    </button>
+                  )}
+                  
+                  <button className="p-2 transition-all active:scale-90 text-white/50 hover:text-white">
+                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 0 0-7.07 17.07l.71-.7a9 9 0 0 1 12.72 0l.7-.7A10 10 0 0 0 12 2z"></path><path d="M12 6a6 6 0 0 0-4.24 10.24l.71-.7a5 5 0 0 1 7.06 0l.71-.7A6 6 0 0 0 12 6z"></path><path d="M12 10a2 2 0 0 0-1.41 3.41l.7.71a1 1 0 0 1 1.42 0l.7-.71A2 2 0 0 0 12 10z"></path><polygon points="12 22 17 14 7 14 12 22"></polygon></svg>
                   </button>
-                )}
+                  
+                  <button className="p-2 transition-all active:scale-90 text-white/50 hover:text-white">
+                     <AlignLeft size={22} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
