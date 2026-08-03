@@ -11,7 +11,6 @@ import SearchView from './components/SearchView';
 import MusicPlayer from './components/MusicPlayer';
 import ProfileView from './components/ProfileView';
 import AuthView from './components/AuthView';
-import DirectMessages from './components/DirectMessages';
 import { useAllUsers, useSystemConfig, useUserProfile } from './hooks';
 
 export default function App() {
@@ -21,7 +20,6 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(null);
-  const [dmRecipientId, setDmRecipientId] = useState(null);
   
   // Track playlist (simple for now - just play whatever is passed)
   const [playlist, setPlaylist] = useState([]);
@@ -137,11 +135,6 @@ export default function App() {
           </div>
           <span className="font-['Anton'] text-lg tracking-wide uppercase text-white">Music</span>
         </div>
-        <div className="flex items-center gap-4">
-          <button onClick={() => goTab('messages')} className="text-white/70 hover:text-white transition-colors">
-            <MessageSquare size={20} />
-          </button>
-        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto relative">
@@ -169,15 +162,6 @@ export default function App() {
             />
           )}
 
-          {tab === 'messages' && (
-            <DirectMessages
-              isOpen={true}
-              onClose={() => goTab('listen_now')}
-              currentUserId={userId}
-              users={users}
-              initialRecipientId={dmRecipientId}
-            />
-          )}
         </div>
       </main>
 

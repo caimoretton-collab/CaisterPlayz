@@ -322,6 +322,25 @@ export default function ProfileView({ profile, currentUserId, onRefresh }) {
                     <div className="text-sm font-bold text-white truncate group-hover:text-[#ff9500] transition-colors">{track.title}</div>
                     <div className="text-xs text-white/50 truncate">{formatNumber(track.plays || 0)} plays</div>
                   </div>
+                  {isOwn && (
+                    <button 
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Are you sure you want to delete "${track.title}"? This cannot be undone.`)) {
+                          try {
+                            await pb.collection('cplayz_tracks').delete(track.id);
+                            setTracks(prev => prev.filter(t => t.id !== track.id));
+                          } catch (err) {
+                            console.error(err);
+                            alert("Failed to delete track.");
+                          }
+                        }
+                      }}
+                      className="p-2 text-white/30 hover:text-red-500 transition-colors rounded-full hover:bg-red-500/10"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
               );
             })}
