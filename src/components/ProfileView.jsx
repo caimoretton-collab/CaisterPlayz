@@ -361,21 +361,6 @@ export default function ProfileView({ profile, currentUserId, onRefresh }) {
               className="w-full bg-[#1c1c1e] hover:bg-[#2c2c2e] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors border border-white/5"
             >
               <LogOut size={18} /> Sign Out
-            </button>
-            <button
-              onClick={() => {
-                const key = prompt('Enter Admin Signal Key:');
-                if (key && key.trim() === 'CAISTER_CORE_ADMIN') {
-                  localStorage.setItem('caister_admin', key.trim());
-                  window.location.reload();
-                } else if (key) {
-                  alert('Signal key denied.');
-                }
-              }}
-              className="w-full text-white/40 hover:text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
-            >
-              <ShieldAlert size={16} /> Admin Access
-            </button>
           </div>
         )}
       </div>

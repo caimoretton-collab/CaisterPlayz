@@ -18,7 +18,7 @@ export default function App() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [userId, setUserId] = useState(pb.authStore.model?.id || null);
   const [booting, setBooting] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+
   const [currentTrack, setCurrentTrack] = useState(null);
   
   // Track playlist (simple for now - just play whatever is passed)
@@ -69,18 +69,9 @@ export default function App() {
     };
     handleOAuthRedirect();
 
-    const adminEmails = ['caismoretton@gmail.com', 'nexusnpc0@gmail.com'];
-    
     const unsub = pb.authStore.onChange((token, model) => {
       setUserId(model?.id || null);
-      if (model?.email && adminEmails.includes(model.email.toLowerCase())) {
-        setIsAdmin(true);
-      }
     }, true);
-
-    if (pb.authStore.model?.email && adminEmails.includes(pb.authStore.model.email.toLowerCase())) {
-      setIsAdmin(true);
-    }
 
     if (!window.location.search.includes('code=')) {
       setTimeout(() => setBooting(false), 500);
