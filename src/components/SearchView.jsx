@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Play, User } from 'lucide-react';
 import pb from '../pocketbase';
+import { useBlocks } from '../hooks';
 
 export default function SearchView({ currentUserId, onPlayTrack, onProfileClick }) {
   const [query, setQuery] = useState('');
@@ -9,6 +10,9 @@ export default function SearchView({ currentUserId, onPlayTrack, onProfileClick 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('tracks'); // 'tracks' or 'artists'
+  
+  const { blocks } = useBlocks(currentUserId);
+  const blockedIds = blocks.map(b => b.blockedId);
 
   // Debounce query
   useEffect(() => {
@@ -38,8 +42,13 @@ export default function SearchView({ currentUserId, onPlayTrack, onProfileClick 
             filter: `displayName ~ "${debouncedQuery}" || username ~ "${debouncedQuery}"`
           })
         ]);
-        setTracks(trackRes.items);
-        setUsers(userRes.items);
+        
+        // Filter out blocked users
+        const filteredTracks = trackRes.items.filter(t => !blockedIds.includes(t.userId));
+        const filteredUsers = userRes.items.filter(u => !blockedIds.includes(u.id));
+
+        setTracks(filteredTracks);
+        setUsers(filteredUsers);
       } catch (err) {
         console.error('Search error:', err);
       } finally {

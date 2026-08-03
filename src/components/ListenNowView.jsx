@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import pb from '../pocketbase';
 import { Play, MoreVertical, Flag, ShieldBan } from 'lucide-react';
+import { useBlocks } from '../hooks';
 
 export default function ListenNowView({ currentUserId, onPlayTrack }) {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  const { blocks, refresh: refreshBlocks } = useBlocks(currentUserId);
+  const blockedIds = blocks.map(b => b.blockedId);
 
   useEffect(() => {
     fetchTracks();
@@ -40,7 +44,17 @@ export default function ListenNowView({ currentUserId, onPlayTrack }) {
           reason: reason,
           status: 'pending'
         });
-        alert('Report submitted successfully.');
+        
+        // Attempt to delete from database
+        try {
+          await pb.collection('cplayz_tracks').delete(track.id);
+        } catch (delErr) {
+          console.warn("Could not delete from DB (permissions?), but hiding locally.");
+        }
+        
+        // Hide locally
+        setTracks(prev => prev.filter(t => t.id !== track.id));
+        alert('Report submitted and track deleted.');
       } catch (err) {
         console.error("Report failed:", err);
         let errorMsg = 'Failed to report.';
@@ -54,19 +68,21 @@ export default function ListenNowView({ currentUserId, onPlayTrack }) {
 
   const handleBlock = async (e, track) => {
     e.stopPropagation();
-    if (window.confirm(`Block user ${track.expand?.userId?.name || 'Unknown'}?`)) {
+    if (window.confirm(`Block user ${track.expand?.userId?.displayName || track.expand?.userId?.name || 'Unknown'}?`)) {
       try {
         await pb.collection('cplayz_blocks').create({
           blockerId: currentUserId,
           blockedId: track.userId
         });
+        await refreshBlocks();
         alert('User blocked.');
-        fetchTracks(); // refresh to hide their tracks
       } catch (e) {
         alert('Failed to block.');
       }
     }
   };
+
+  const visibleTracks = tracks.filter(t => !blockedIds.includes(t.userId));
 
   if (loading) return <div className="p-8 text-center text-white/50">Loading fresh drops...</div>;
 
@@ -75,7 +91,7 @@ export default function ListenNowView({ currentUserId, onPlayTrack }) {
       <h1 className="text-3xl font-bold mb-6 text-white font-['Anton'] tracking-wider">LISTEN NOW</h1>
       
       <div className="grid grid-cols-2 gap-4">
-        {tracks.map(track => {
+        {visibleTracks.map(track => {
           const coverUrl = track.coverArt ? pb.files.getUrl(track, track.coverArt) : 'https://placehold.co/200x200/1c1c1e/ff9500?text=CP';
           
           return (
@@ -118,7 +134,7 @@ export default function ListenNowView({ currentUserId, onPlayTrack }) {
         })}
       </div>
       
-      {tracks.length === 0 && (
+      {visibleTracks.length === 0 && (
         <div className="text-center py-12 text-white/40 border border-white/10 rounded-2xl border-dashed">
           No tracks dropped yet.
         </div>

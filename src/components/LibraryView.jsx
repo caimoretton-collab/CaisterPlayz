@@ -2,11 +2,16 @@ import React, { useState, useEffect } from 'react';
 import pb from '../pocketbase';
 import { Play, Music } from 'lucide-react';
 
+import { useBlocks } from '../hooks';
+
 export default function LibraryView({ currentUserId, onPlayTrack }) {
   const [myTracks, setMyTracks] = useState([]);
   const [likedTracks, setLikedTracks] = useState([]);
   const [tab, setTab] = useState('uploads'); // 'uploads' or 'likes'
   const [loading, setLoading] = useState(true);
+
+  const { blocks } = useBlocks(currentUserId);
+  const blockedIds = blocks.map(b => b.blockedId);
 
   useEffect(() => {
     if (currentUserId) {
@@ -37,7 +42,8 @@ export default function LibraryView({ currentUserId, onPlayTrack }) {
     }
   };
 
-  const tracksToShow = tab === 'uploads' ? myTracks : likedTracks;
+  const tracksToShowRaw = tab === 'uploads' ? myTracks : likedTracks;
+  const tracksToShow = tracksToShowRaw.filter(t => !blockedIds.includes(t.userId));
 
   if (loading) return <div className="p-8 text-center text-white/50">Loading library...</div>;
 
