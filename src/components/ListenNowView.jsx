@@ -26,19 +26,28 @@ export default function ListenNowView({ currentUserId, onPlayTrack }) {
 
   const handleReport = async (e, track) => {
     e.stopPropagation();
+    const menu = document.getElementById(`menu-${track.id}`);
+    if (menu) menu.classList.add('hidden');
+    
     const reason = prompt("Reason for reporting this track?");
     if (reason) {
       try {
         await pb.collection('cplayz_reports').create({
           reporterId: currentUserId,
           reportedUserId: track.userId,
-          postId: track.id, // using postId for trackId
+          targetId: track.id,
+          targetType: 'track',
           reason: reason,
-          type: 'track'
+          status: 'pending'
         });
-        alert('Report submitted.');
-      } catch (e) {
-        alert('Failed to report.');
+        alert('Report submitted successfully.');
+      } catch (err) {
+        console.error("Report failed:", err);
+        let errorMsg = 'Failed to report.';
+        if (err.response && err.response.data) {
+          errorMsg += ' ' + Object.entries(err.response.data).map(([k,v]) => `${k}: ${v.message}`).join(', ');
+        }
+        alert(errorMsg);
       }
     }
   };
