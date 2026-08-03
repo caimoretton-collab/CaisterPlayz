@@ -36,10 +36,14 @@ export default function SearchView({ currentUserId, onPlayTrack, onProfileClick 
         const [trackRes, userRes] = await Promise.all([
           pb.collection('cplayz_tracks').getList(1, 20, {
             filter: `title ~ "${debouncedQuery}" || artist ~ "${debouncedQuery}"`,
-            expand: 'userId'
+            expand: 'userId',
+            requestKey: null,
+            $autoCancel: false
           }),
           pb.collection('users').getList(1, 20, {
-            filter: `displayName ~ "${debouncedQuery}" || username ~ "${debouncedQuery}"`
+            filter: `displayName ~ "${debouncedQuery}" || username ~ "${debouncedQuery}"`,
+            requestKey: null,
+            $autoCancel: false
           })
         ]);
         

@@ -8,7 +8,7 @@ export default function ListenNowView({ currentUserId, onPlayTrack }) {
   const [loading, setLoading] = useState(true);
   
   const { blocks, refresh: refreshBlocks } = useBlocks(currentUserId);
-  const blockedIds = blocks.map(b => b.blockedId);
+  const blockedIds = blocks.map(b => b.blockedId).filter(Boolean);
 
   useEffect(() => {
     fetchTracks();
@@ -16,9 +16,11 @@ export default function ListenNowView({ currentUserId, onPlayTrack }) {
 
   const fetchTracks = async () => {
     try {
-      const res = await pb.collection('cplayz_tracks').getList(1, 20, {
+      const res = await pb.collection('cplayz_tracks').getList(1, 50, {
         sort: '-created',
-        expand: 'userId'
+        expand: 'userId',
+        requestKey: null,
+        $autoCancel: false
       });
       setTracks(res.items);
     } catch (e) {
@@ -83,6 +85,7 @@ export default function ListenNowView({ currentUserId, onPlayTrack }) {
   };
 
   const visibleTracks = tracks.filter(t => !blockedIds.includes(t.userId));
+  console.log('ListenNowView tracks:', tracks, 'blockedIds:', blockedIds, 'visibleTracks:', visibleTracks);
 
   if (loading) return <div className="p-8 text-center text-white/50">Loading fresh drops...</div>;
 

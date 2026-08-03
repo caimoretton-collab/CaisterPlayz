@@ -25,12 +25,16 @@ export default function LibraryView({ currentUserId, onPlayTrack }) {
       const [uploadsRes, likesRes] = await Promise.all([
         pb.collection('cplayz_tracks').getFullList({
           filter: `userId="${currentUserId}"`,
-          sort: '-created'
+          sort: '-created',
+          requestKey: null,
+          $autoCancel: false
         }),
         pb.collection('cplayz_track_likes').getFullList({
           filter: `userId="${currentUserId}"`,
           expand: 'trackId,trackId.userId',
-          sort: '-created'
+          sort: '-created',
+          requestKey: null,
+          $autoCancel: false
         })
       ]);
       setMyTracks(uploadsRes);
