@@ -91,7 +91,15 @@ export default function ListenNowView({ currentUserId, onPlayTrack }) {
 
   return (
     <div className="pb-32 pt-4 px-4">
-      <h1 className="text-3xl font-bold mb-6 text-white font-['Anton'] tracking-wider">LISTEN NOW</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold text-white font-['Anton'] tracking-wider">LISTEN NOW</h1>
+        <button 
+          onClick={() => { setLoading(true); fetchTracks(); }}
+          className="px-3 py-1 bg-white/10 rounded-full text-xs font-bold text-white uppercase tracking-wider hover:bg-white/20"
+        >
+          Refresh
+        </button>
+      </div>
       
       <div className="grid grid-cols-2 gap-4">
         {visibleTracks.map(track => {
@@ -140,6 +148,8 @@ export default function ListenNowView({ currentUserId, onPlayTrack }) {
       {visibleTracks.length === 0 && (
         <div className="text-center py-12 text-white/40 border border-white/10 rounded-2xl border-dashed">
           No tracks dropped yet.
+          <br/>
+          <span className="text-xs text-red-500">DEBUG: tracks={tracks.length} | blocked={blockedIds.length} | loading={loading ? 'true' : 'false'}</span>
         </div>
       )}
     </div>
