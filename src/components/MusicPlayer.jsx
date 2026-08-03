@@ -37,15 +37,7 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
     }
   }, [track]);
 
-  useEffect(() => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.play().catch(() => setIsPlaying(false));
-      } else {
-        audioRef.current.pause();
-      }
-    }
-  }, [isPlaying]);
+
 
   useEffect(() => {
     if (track && track.lyrics) {
@@ -200,7 +192,22 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
 
   const togglePlay = (e) => {
     e.stopPropagation();
-    setIsPlaying(!isPlaying);
+    if (!audioRef.current) return;
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => setIsPlaying(true)).catch(e => {
+          console.error("Playback blocked by browser:", e);
+          setIsPlaying(false);
+        });
+      } else {
+        setIsPlaying(true);
+      }
+    }
   };
 
   const toggleLike = async (e) => {
