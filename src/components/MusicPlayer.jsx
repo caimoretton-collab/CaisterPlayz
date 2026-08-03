@@ -257,10 +257,15 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
 
   if (isExpanded) {
     return (
-      <div className="fixed inset-0 z-50 bg-[#000000] flex flex-col p-6 pb-12 animate-in slide-in-from-bottom-full duration-300">
+      <div 
+        className="fixed inset-0 z-50 flex flex-col p-6 pb-12 animate-in slide-in-from-bottom-full duration-300 bg-cover bg-center overflow-hidden"
+        style={{ backgroundImage: `url(${coverUrl})` }}
+      >
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-[60px]" />
+        
         <audio ref={audioRef} onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoadedMetadata} onEnded={onNext} />
         
-        <div className="flex justify-between items-center mb-8 pt-4">
+        <div className="relative z-10 flex justify-between items-center mb-6 pt-4">
           <button onClick={() => { setIsExpanded(false); setIsSyncStudioMode(false); }} className="p-2 text-white/70 hover:text-white">
             <Minimize2 size={24} />
           </button>
@@ -270,14 +275,14 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
           <div className="w-10"></div>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center min-h-0 w-full max-w-md mx-auto">
           {!isLyricsMode && !isSyncStudioMode ? (
             <div className="w-full max-w-sm aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-[#ff9500]/20 mb-10 border border-white/10 transition-all">
               <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
             </div>
           ) : isSyncStudioMode ? (
-            <div className="w-full max-w-sm flex-1 mb-10 border border-[#ff9500]/30 bg-black/60 backdrop-blur-3xl p-6 rounded-2xl relative flex flex-col items-center shadow-[0_0_50px_rgba(255,149,0,0.2)]">
-              <div className="w-full flex-1 overflow-y-auto hide-scrollbar pb-10" ref={lyricsContainerRef}>
+            <div className="w-full flex-1 mb-10 border border-[#ff9500]/30 bg-black/40 backdrop-blur-3xl p-6 rounded-2xl relative flex flex-col items-center shadow-[0_0_50px_rgba(255,149,0,0.2)]">
+              <div className="w-full flex-1 overflow-y-auto hide-scrollbar pb-[40vh] pt-[20vh] mask-image-fade" ref={lyricsContainerRef} style={{ WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 10%, black 90%, transparent)' }}>
                 {syncLines.map((line, idx) => {
                   const isCurrent = idx === currentSyncIdx;
                   const isDone = idx < currentSyncIdx;
@@ -291,8 +296,8 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
                     <p 
                       key={idx} 
                       data-sync-idx={idx}
-                      className={`text-2xl font-bold leading-relaxed tracking-wide mb-6 transition-all duration-300 text-center ${
-                        isCurrent ? 'text-[#ff9500] scale-110' : isDone ? 'text-white/40' : 'text-white/80'
+                      className={`text-[28px] font-black leading-tight tracking-tight mb-8 transition-all duration-300 text-center ${
+                        isCurrent ? 'text-[#ff9500] scale-105 opacity-100' : isDone ? 'text-white/30 blur-[1px]' : 'text-white/60 blur-[1px]'
                       }`}
                     >
                       {line}
@@ -312,20 +317,19 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
               </div>
             </div>
           ) : (
-            <div className="w-full max-w-sm aspect-square rounded-2xl overflow-y-auto mb-10 border border-white/10 bg-black/40 backdrop-blur-3xl p-6 hide-scrollbar relative transition-all">
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 pointer-events-none z-10" />
+            <div className="w-full flex-1 overflow-y-auto mb-10 hide-scrollbar relative transition-all mask-image-fade" style={{ WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 10%, black 90%, transparent)' }}>
               {parsedLyrics ? (
-                <div className="w-full pb-[50vh] pt-[20vh]" ref={lyricsContainerRef}>
+                <div className="w-full pb-[60vh] pt-[30vh]" ref={lyricsContainerRef}>
                   {parsedLyrics.map((line, idx) => {
                     const isActive = idx === activeLineIdx;
                     return (
                       <p 
                         key={idx} 
                         data-idx={idx}
-                        className={`text-2xl font-bold leading-relaxed tracking-wide mb-6 transition-all duration-500 ease-out cursor-pointer ${
+                        className={`text-[28px] font-black leading-tight tracking-tight mb-8 transition-all duration-700 ease-out cursor-pointer ${
                           isActive 
-                            ? 'text-white scale-105 origin-left blur-none' 
-                            : 'text-white/40 blur-[1px] hover:text-white/70 hover:blur-none'
+                            ? 'text-white scale-100 origin-left blur-none opacity-100' 
+                            : 'text-white scale-95 origin-left blur-[2px] opacity-40 hover:opacity-70 hover:blur-none'
                         }`}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -341,11 +345,11 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
                   })}
                 </div>
               ) : track.lyrics ? (
-                <div className="w-full pb-16">
+                <div className="w-full pb-[20vh] pt-[10vh]">
                   {track.lyrics.split('\n').map((line, idx) => (
                     <p 
                       key={idx} 
-                      className="text-2xl font-bold text-white/90 leading-relaxed tracking-wide mb-4 animate-in slide-in-from-bottom-4 fade-in duration-700 fill-mode-both"
+                      className="text-[28px] font-black text-white/90 leading-tight tracking-tight mb-8 animate-in slide-in-from-bottom-8 fade-in duration-1000 fill-mode-both"
                       style={{ animationDelay: `${Math.min(idx * 50, 1500)}ms` }}
                     >
                       {line || '\u00A0'}
@@ -363,13 +367,13 @@ export default function MusicPlayer({ track, onNext, onPrev, currentUserId }) {
           )}
           
           <div className="w-full max-w-sm px-4">
-            <div className="flex justify-between items-end mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-white truncate max-w-[240px]">{track.title}</h2>
-                <p className="text-lg text-[#ff9500] truncate max-w-[240px]">{track.artist}</p>
+            <div className="flex justify-between items-end mb-6 px-4">
+              <div className="min-w-0 pr-4">
+                <h2 className="text-[22px] font-black text-white truncate">{track.title}</h2>
+                <p className="text-[17px] text-white/70 font-medium truncate mt-1">{track.artist}</p>
               </div>
-              <button onClick={toggleLike} className={`p-2 transition-transform active:scale-90 ${isLiked ? 'text-[#ff9500]' : 'text-white/50 hover:text-white'}`}>
-                <Heart size={28} fill={isLiked ? "currentColor" : "none"} />
+              <button onClick={toggleLike} className={`p-2 transition-transform active:scale-90 shrink-0 ${isLiked ? 'text-[#ff9500]' : 'text-white hover:text-[#ff9500]'}`}>
+                <Heart size={28} fill={isLiked ? "currentColor" : "none"} strokeWidth={isLiked ? 0 : 2} />
               </button>
             </div>
 
