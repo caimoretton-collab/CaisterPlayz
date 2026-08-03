@@ -361,6 +361,7 @@ export default function ProfileView({ profile, currentUserId, onRefresh }) {
               className="w-full bg-[#1c1c1e] hover:bg-[#2c2c2e] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors border border-white/5"
             >
               <LogOut size={18} /> Sign Out
+            </button>
           </div>
         )}
       </div>
