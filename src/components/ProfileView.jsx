@@ -23,7 +23,7 @@ function compressAv(file) {
   });
 }
 
-export default function ProfileView({ profile, currentUserId, onRefresh }) {
+export default function ProfileView({ profile, currentUserId, onRefresh, users = [] }) {
   const [editing, setEditing] = useState(false);
   const [eName, setEName] = useState('');
   const [eBio, setEBio] = useState('');
@@ -33,6 +33,7 @@ export default function ProfileView({ profile, currentUserId, onRefresh }) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showBlockedModal, setShowBlockedModal] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [tracks, setTracks] = useState([]);
@@ -351,6 +352,14 @@ export default function ProfileView({ profile, currentUserId, onRefresh }) {
         {isOwn && (
           <div className="mt-12 pt-6 border-t border-white/10 space-y-3">
             <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-4">Account Settings</h3>
+            
+            <button
+              onClick={() => setShowBlockedModal(true)}
+              className="w-full bg-[#1c1c1e] hover:bg-[#2c2c2e] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors border border-white/5"
+            >
+              <ShieldOff size={18} /> Manage Blocked Users
+            </button>
+
             <button
               onClick={() => {
                 if (window.confirm('Sign out of CaisterPlayz?')) {
@@ -397,6 +406,60 @@ export default function ProfileView({ profile, currentUserId, onRefresh }) {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+      {/* Manage Blocked Modal */}
+      {showBlockedModal && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowBlockedModal(false)}>
+          <div className="w-full max-w-md bg-[#1c1c1e] rounded-t-3xl p-6 border-t border-white/10 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-white font-['Anton'] tracking-wider">BLOCKED USERS</h3>
+              <button onClick={() => setShowBlockedModal(false)} className="text-white/50 hover:text-white"><X size={24} /></button>
+            </div>
+            
+            {blocks.length === 0 ? (
+              <div className="text-center py-12 text-white/50 text-sm">
+                You haven't blocked anyone.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {blocks.map(b => {
+                  const blockedUser = users.find(u => u.id === b.blockedId);
+                  const name = blockedUser ? (blockedUser.displayName || blockedUser.username || blockedUser.name) : 'Unknown User';
+                  const initial = name[0]?.toUpperCase() || '?';
+                  
+                  return (
+                    <div key={b.id} className="flex items-center justify-between p-3 rounded-xl bg-black/50 border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-[#2c2c2e] flex items-center justify-center font-bold text-white/50 overflow-hidden">
+                          {blockedUser?.avatarUrl ? (
+                            <img src={blockedUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            initial
+                          )}
+                        </div>
+                        <div className="text-sm font-bold text-white">{name}</div>
+                      </div>
+                      <button 
+                        onClick={async () => {
+                          if (window.confirm(`Unblock ${name}?`)) {
+                            setActionLoading(true);
+                            await unblockUser(currentUserId, b.blockedId);
+                            await refreshBlocks();
+                            setActionLoading(false);
+                          }
+                        }}
+                        disabled={actionLoading}
+                        className="px-4 py-1.5 rounded-full border border-white/10 text-xs font-bold text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+                      >
+                        Unblock
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
