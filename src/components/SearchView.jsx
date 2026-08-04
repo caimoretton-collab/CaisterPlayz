@@ -12,7 +12,7 @@ export default function SearchView({ currentUserId, onPlayTrack, onProfileClick 
   const [activeTab, setActiveTab] = useState('tracks'); // 'tracks' or 'artists'
   
   const { blocks } = useBlocks(currentUserId);
-  const blockedIds = blocks.map(b => b.blockedId);
+  const blockedIds = blocks.map(b => b.blockedId).filter(id => id && id !== currentUserId);
 
   // Debounce query
   useEffect(() => {

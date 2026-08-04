@@ -10,8 +10,8 @@ export default function LibraryView({ currentUserId, onPlayTrack }) {
   const [tab, setTab] = useState('uploads'); // 'uploads' or 'likes'
   const [loading, setLoading] = useState(true);
 
-  const { blocks } = useBlocks(currentUserId);
-  const blockedIds = blocks.map(b => b.blockedId);
+  const { blocks, refresh: refreshBlocks } = useBlocks(currentUserId);
+  const blockedIds = blocks.map(b => b.blockedId).filter(id => id && id !== currentUserId);
 
   useEffect(() => {
     if (currentUserId) {

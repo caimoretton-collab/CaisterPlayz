@@ -8,7 +8,7 @@ export default function ListenNowView({ currentUserId, onPlayTrack }) {
   const [loading, setLoading] = useState(true);
   
   const { blocks, refresh: refreshBlocks } = useBlocks(currentUserId);
-  const blockedIds = blocks.map(b => b.blockedId).filter(Boolean);
+  const blockedIds = blocks.map(b => b.blockedId).filter(id => id && id !== currentUserId);
 
   useEffect(() => {
     fetchTracks();
